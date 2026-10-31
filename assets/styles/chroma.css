@@ -1,0 +1,9 @@
+/* Code colors from mote: keywords, comments, strings, and types. */
+.chroma { color: var(--term-fg); background: var(--term-bg); }
+.chroma .k, .chroma .kd, .chroma .kn, .chroma .kc, .chroma .nt { color: var(--term-yellow); }
+.chroma .c, .chroma .c1, .chroma .cm, .chroma .cp { color: var(--term-dim); font-style: italic; }
+.chroma .s, .chroma .s1, .chroma .s2, .chroma .sb, .chroma .sh, .chroma .se, .chroma .l { color: var(--term-green); }
+.chroma .kt, .chroma .nc, .chroma .ld { color: var(--term-cyan); }
+.chroma .gi { color: var(--term-green); }
+.chroma .gd { color: var(--term-red); }
+.chroma .gu, .chroma .gh { color: var(--term-cyan); }

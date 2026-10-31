@@ -1,0 +1,7 @@
+{{- $md := "" -}}
+{{- range . -}}
+  {{- $default := cond .required "required" (or .default "-") -}}
+  {{- $md = printf "%s| [`%s`](#%s) | %s | %s | %s |\n" $md (replaceRE `^[^.]+\.` "" .path) .path (partial "reference/esc.html" .type) (partial "reference/esc.html" $default) (partial "reference/esc.html" .line) -}}
+  {{- $md = printf "%s%s" $md (partial "reference/key-rows.html" .keys) -}}
+{{- end -}}
+{{- return $md -}}

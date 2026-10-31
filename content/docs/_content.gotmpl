@@ -1,0 +1,63 @@
+{{- $ref := hugo.Data.reference -}}
+{{- $sections := slice -}}
+
+{{- $index := "# Commands\n\n| Command | Summary |\n| --- | --- |\n" -}}
+{{- range $i, $c := $ref.commands -}}
+  {{- $slug := replace $c.name " " "-" | default "winch" -}}
+  {{- $index = printf "%s| [%s](%s/) | %s |\n" $index (trim (printf "winch %s" $c.name) " ") $slug (partial "reference/esc.html" $c.summary) -}}
+  {{- $.AddPage (dict
+    "path" (printf "reference/commands/%s" $slug) "title" (trim (printf "winch %s" $c.name) " ") "weight" (add $i 1)
+    "description" $c.summary
+    "content" (dict "mediaType" "text/markdown" "value" (partial "reference/command.html" $c))) -}}
+{{- end -}}
+{{- $description := "The commands of winch, their usage, and their flags." -}}
+{{- $sections = $sections | append (dict "path" "commands" "title" "Commands" "description" $description) -}}
+{{- $.AddPage (dict
+  "path" "reference/commands" "kind" "section" "title" "Commands" "weight" 1
+  "description" $description "params" (dict "bookCollapseSection" true)
+  "content" (dict "mediaType" "text/markdown" "value" $index)) -}}
+
+{{- range $g, $group := $ref.groups -}}
+  {{- $path := urlize $group.title -}}
+  {{- $index := printf "# %s\n\n| Topic | Meaning |\n| --- | --- |\n" (partial "reference/esc.html" $group.title) -}}
+  {{- $names := slice -}}
+  {{- range $i, $t := $group.topics -}}
+    {{- $names = $names | append $t.name -}}
+    {{- $index = printf "%s| [%s](%s/) | %s |\n" $index $t.name $t.name (partial "reference/esc.html" $t.line) -}}
+    {{- $.AddPage (dict
+      "path" (printf "reference/%s/%s" $path $t.name) "title" $t.name "weight" (add $i 1)
+      "description" $t.line
+      "content" (dict "mediaType" "text/markdown" "value" (partial "reference/topic.html" $t))) -}}
+  {{- end -}}
+  {{- $description := delimit $names ", " -}}
+  {{- $sections = $sections | append (dict "path" $path "title" $group.title "description" $description) -}}
+  {{- $.AddPage (dict
+    "path" (printf "reference/%s" $path) "kind" "section" "title" $group.title "weight" (add $g 2)
+    "description" $description
+    "content" (dict "mediaType" "text/markdown" "value" $index)) -}}
+{{- end -}}
+
+{{- $index = "# Modules\n\n| Module | Effect |\n| --- | --- |\n" -}}
+{{- range $i, $m := $ref.modules -}}
+  {{- $index = printf "%s| [%s](%s/) | %s |\n" $index $m.name $m.name (partial "reference/esc.html" $m.line) -}}
+  {{- $.AddPage (dict
+    "path" (printf "reference/modules/%s" $m.name) "title" $m.name "weight" (add $i 1)
+    "description" $m.line
+    "content" (dict "mediaType" "text/markdown" "value" (partial "reference/module.html" $m))) -}}
+{{- end -}}
+{{- $description = "The modules of winch, their keys, and examples." -}}
+{{- $sections = $sections | append (dict "path" "modules" "title" "Modules" "description" $description) -}}
+{{- $.AddPage (dict
+  "path" "reference/modules" "kind" "section" "title" "Modules" "weight" (add (len $ref.groups) 2)
+  "description" $description "params" (dict "bookCollapseSection" true)
+  "content" (dict "mediaType" "text/markdown" "value" $index)) -}}
+
+{{- $index = printf "# Reference\n\n%s\n\n`winch doc` shows the same text in the terminal. For an introduction to the concepts, read the [User Guide](/docs/user-guide/).\n\n" (partial "reference/esc.html" $ref.intro) -}}
+{{- range $sections -}}
+  {{- $index = printf "%s- [%s](%s/): %s\n" $index (partial "reference/esc.html" .title) .path (partial "reference/esc.html" .description) -}}
+{{- end -}}
+{{- $.AddPage (dict
+  "path" "reference" "kind" "section" "title" "Reference" "weight" 4
+  "description" "The commands, the topics, and the modules of winch."
+  "params" (dict "bookFlatSection" true)
+  "content" (dict "mediaType" "text/markdown" "value" $index)) -}}

@@ -1,0 +1,55 @@
+.examples {
+  overflow: hidden;
+  margin: calc(var(--space-16) * 2) 0;
+  border: 1px solid var(--term-line);
+  border-radius: 8px;
+  background: var(--term-bg);
+  color-scheme: dark;
+  color: var(--term-fg);
+  font-family: var(--font-mono, ui-monospace, "JetBrains Mono", Menlo, monospace);
+}
+
+.examples-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--term-line);
+}
+
+.examples-tabs button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-right: 1px solid var(--term-line);
+  background: none;
+  color: var(--term-dim);
+  font: inherit;
+  font-size: var(--font-size-smaller);
+  cursor: pointer;
+}
+
+.examples-tabs button:hover { color: var(--term-fg); }
+.examples-tabs button[aria-selected="true"] { background: var(--term-bg-dark); color: var(--term-yellow); }
+
+.examples-panel { aspect-ratio: 5 / 3; overflow: auto; }
+
+.markdown .examples pre {
+  margin: 0;
+  padding: var(--space-16);
+  border: 0;
+  background: none;
+  color: var(--term-fg);
+  font-size: var(--font-size-smaller);
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.markdown .examples pre code { font-size: inherit; line-height: inherit; }
+
+.examples-term .prompt { color: var(--term-dim); user-select: none; }
+
+.examples-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem var(--space-16);
+  background: var(--term-line);
+  font-size: var(--font-size-smallest);
+}

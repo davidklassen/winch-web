@@ -1,0 +1,88 @@
+/* The colors of the terminal blocks, from mote. They are dark in both
+themes. */
+:root {
+  --term-bg: #323437;
+  --term-bg-dark: #2b2d30;
+  --term-line: #3c4045;
+  --term-fg: #e0e2eb;
+  --term-dim: #9c9ea5;
+  --term-green: #88ad84;
+  --term-red: #c07a72;
+  --term-yellow: #dac688;
+  --term-cyan: #8aadba;
+}
+
+@layer theme {
+  :root[data-theme="mote-auto"] {
+    --body-background: #f7f7f5;
+    --body-font-color: #2b2d30;
+
+    --color-link: #4e5f8f;
+    --color-visited-link: #6f5a80;
+
+    --gray-100: #ececea;
+    --gray-200: #dcdcd9;
+    --gray-500: #6d6f75;
+
+    --color-accent-default:   #6d6f75;
+    --color-accent-note:      #4e5f8f;
+    --color-accent-tip:       #4f7a4b;
+    --color-accent-important: #6f5a80;
+    --color-accent-warning:   #9a8545;
+    --color-accent-caution:   #9a4f47;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="mote-auto"] {
+      color-scheme: dark;
+      --body-background: #2b2d30;
+      --body-font-color: #e0e2eb;
+      --icon-filter: brightness(0) invert(1);
+
+      --color-link: #96a6d0;
+      --color-visited-link: #bda0ca;
+
+      --gray-100: #323437;
+      --gray-200: #3c4045;
+      --gray-500: #9c9ea5;
+
+      --color-accent-default:   #9c9ea5;
+      --color-accent-note:      #8192c0;
+      --color-accent-tip:       #88ad84;
+      --color-accent-important: #ab8dba;
+      --color-accent-warning:   #dac688;
+      --color-accent-caution:   #c07a72;
+    }
+  }
+}
+
+.markdown pre,
+.markdown .highlight pre {
+  background: var(--term-bg);
+  color: var(--term-fg);
+}
+
+.markdown :not(pre) > code {
+  background: var(--gray-100);
+}
+
+.markdown thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
+/* winch output, colored as in a terminal: in the docs and on the
+landing page. */
+:is(.winch-output, .examples-term) b { font-weight: 700; }
+:is(.winch-output, .examples-term) .add { color: var(--term-green); }
+:is(.winch-output, .examples-term) .del { color: var(--term-red); }
+:is(.winch-output, .examples-term) .chg { color: var(--term-yellow); }
+:is(.winch-output, .examples-term) :is(.hunk, .mark) { color: var(--term-cyan); }
+
+/* The brand of the docs matches the brand of the landing page. */
+.book-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Every page keeps room for the scrollbar, so the layout does not move. */
+html { scrollbar-gutter: stable; }

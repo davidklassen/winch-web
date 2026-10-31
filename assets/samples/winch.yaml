@@ -1,0 +1,10 @@
+name: demo
+
+hosts:
+  demo: {}
+
+steps:
+  - name: Set the message of the day
+    file:
+      path: /etc/motd
+      content: "Managed by winch.\n"

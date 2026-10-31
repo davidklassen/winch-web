@@ -1,0 +1,60 @@
+{{- $opts := dict "noClasses" false -}}
+<div class="examples">
+  <div class="examples-tabs" role="tablist">
+    <button type="button" role="tab" aria-selected="true" data-tab="config">winch.yaml</button>
+    <button type="button" role="tab" data-tab="plan">plan</button>
+    <button type="button" role="tab" data-tab="apply">apply</button>
+  </div>
+
+  <div class="examples-panel" data-panel="config" data-status="winch.yaml">
+    {{ transform.Highlight (resources.Get "samples/winch.yaml").Content "yaml" $opts }}
+  </div>
+  <div class="examples-panel" data-panel="plan" data-status="terminal" hidden>
+<pre class="examples-term"><span class="prompt">$</span> winch plan
+<b>demo</b>
+  <b>demo</b>
+    <span class="chg">~</span> Set the message of the day: file /etc/motd
+        <span class="hunk">@@ -1,1 +1,1 @@</span>
+<span class="del">        -Managed by ansible.</span>
+<span class="add">        +Managed by winch.</span>
+
+1 host: 1 to change, 0 unchanged, 0 unknown
+plan 356cd1d7d9bad92a</pre>
+  </div>
+  <div class="examples-panel" data-panel="apply" data-status="terminal" hidden>
+<pre class="examples-term"><span class="prompt">$</span> winch apply --check 356cd1d7d9bad92a
+<b>demo</b>
+  <b>demo</b>
+    <span class="chg">~</span> Set the message of the day: file /etc/motd
+        <span class="hunk">@@ -1,1 +1,1 @@</span>
+<span class="del">        -Managed by ansible.</span>
+<span class="add">        +Managed by winch.</span>
+
+1 host: 1 to change, 0 unchanged, 0 unknown
+plan 356cd1d7d9bad92a
+demo: demo: <span class="chg">~</span> Set the message of the day: file /etc/motd
+
+1 host: 1 changed, 0 unchanged
+
+<span class="prompt">$</span> winch plan
+1 host: 0 to change, 1 unchanged, 0 unknown
+plan eedfad9ea18e90e7</pre>
+  </div>
+
+  <div class="examples-status"><span data-status-text>winch.yaml</span><span>winch</span></div>
+</div>
+<script>
+  (() => {
+    const root = document.currentScript.previousElementSibling;
+    const status = root.querySelector("[data-status-text]");
+    root.querySelectorAll("[data-tab]").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        root.querySelectorAll("[data-tab]").forEach((t) => t.setAttribute("aria-selected", t === tab));
+        root.querySelectorAll("[data-panel]").forEach((p) => {
+          p.hidden = p.dataset.panel !== tab.dataset.tab;
+          if (!p.hidden) status.textContent = p.dataset.status;
+        });
+      });
+    });
+  })();
+</script>

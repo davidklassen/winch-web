@@ -1,0 +1,1 @@
+{{ .RawContent | strings.TrimLeft "\n" }}

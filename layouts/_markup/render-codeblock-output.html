@@ -1,0 +1,38 @@
+{{- /* Colors winch output as a terminal shows it: bold headers, colored
+marks, colored diff lines, and red exit statuses. */ -}}
+{{- $marks := dict "+" "add" "-" "del" "~" "chg" "!" "mark" "*" "mark" -}}
+{{- $lines := split (strings.TrimRight "\n" .Inner) "\n" -}}
+{{- $out := slice -}}
+{{- $body := -1 -}}
+{{- range $i, $line := $lines -}}
+  {{- $text := strings.TrimLeft " " $line -}}
+  {{- $indent := sub (len $line) (len $text) -}}
+  {{- $pad := substr $line 0 $indent -}}
+  {{- $html := htmlEscape $line -}}
+  {{- if and (ge $body 0) (ge $indent $body) (ne $text "") -}}
+    {{- $class := "" -}}
+    {{- if hasPrefix $text "@@" }}{{ $class = "hunk" }}{{ else if hasPrefix $text "+" }}{{ $class = "add" }}{{ else if hasPrefix $text "-" }}{{ $class = "del" }}{{ end -}}
+    {{- with $class }}{{ $html = printf "%s<span class=\"%s\">%s</span>" $pad . (htmlEscape $text) }}{{ end -}}
+  {{- else -}}
+    {{- $body = -1 -}}
+    {{- $step := findRESubmatch `^( +)([-+~!*?]) (.*)$` $line 1 -}}
+    {{- $applied := findRESubmatch `^(\S.*?: )([-+~!*]) (.*)$` $line 1 -}}
+    {{- $next := "" -}}
+    {{- if lt (add $i 1) (len $lines) }}{{ $next = index $lines (add $i 1) }}{{ end -}}
+    {{- $nextIndent := sub (len $next) (len (strings.TrimLeft " " $next)) -}}
+    {{- if $step -}}
+      {{- $m := index $step 0 -}}
+      {{- $html = printf "%s<span class=\"%s\">%s</span> %s" (index $m 1) (index $marks (index $m 2) | default "") (index $m 2) (htmlEscape (index $m 3)) -}}
+      {{- $body = add $indent 4 -}}
+    {{- else if $applied -}}
+      {{- $m := index $applied 0 -}}
+      {{- $html = printf "%s<span class=\"%s\">%s</span> %s" (htmlEscape (index $m 1)) (index $marks (index $m 2)) (index $m 2) (htmlEscape (index $m 3)) -}}
+    {{- else if findRE `^ +(exit status|killed by signal) \d+$` $line -}}
+      {{- $html = printf "%s<span class=\"del\">%s</span>" $pad (htmlEscape $text) -}}
+    {{- else if and (ne $text "") (ne $next "") (gt $nextIndent $indent) -}}
+      {{- $html = printf "%s<b>%s</b>" $pad (htmlEscape $text) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $out = $out | append $html -}}
+{{- end -}}
+<pre tabindex="0" class="winch-output"><code>{{ delimit $out "\n" | safeHTML }}</code></pre>

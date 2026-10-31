@@ -1,0 +1,4248 @@
+{
+  "intro": "Winch is a server configuration tool. It describes the desired state of your servers in declarative YAML and provides commands to manage that state.",
+  "groups": [
+    {
+      "title": "Project files",
+      "topics": [
+        {
+          "name": "project",
+          "line": "project files and directories",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A project is a directory with a winch.yaml file and the inventories, pipelines, and recipes that it uses. winch reads the project in the current directory."
+            },
+            {
+              "type": "heading",
+              "text": "Minimal project"
+            },
+            {
+              "type": "paragraph",
+              "text": "One winch.yaml with a name, a host, and one step:"
+            },
+            {
+              "type": "code",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com:\n    address: 192.0.2.10\nsteps:\n  - name: Write the message of the day\n    file:\n      path: /etc/motd\n      content: \"Managed by winch.\\n\"\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "Check it, show the changes, then make them:"
+            },
+            {
+              "type": "code",
+              "text": "winch validate\nwinch plan\nwinch apply\n\n# winch writes /etc/motd on web1.example.com.\n"
+            },
+            {
+              "type": "heading",
+              "text": "Hosts"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch connects with the OpenSSH client and its SSH config. The login user is root, or has passwordless sudo. A host needs nothing else installed: winch sends a helper program to /var/lib/winch/ on the host and runs it there. Run winch doc remote."
+            },
+            {
+              "type": "heading",
+              "text": "When the project grows"
+            },
+            {
+              "type": "paragraph",
+              "text": "Move the hosts into inventories, the steps into pipelines, and groups of steps into recipes:"
+            },
+            {
+              "type": "code",
+              "text": "winch.yaml               the project file\ninventories/\n  production.yaml        an inventory: hosts and groups\n  test.yaml\npipelines/\n  site.yaml              a pipeline: stages and steps\nrecipes/\n  nginx/\n    recipe.yaml          a recipe: variables, steps, and handlers\n    templates/site.tmpl  the templates of the recipe\n    files/tls.conf       the files of the recipe\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "The name of an inventory or a pipeline is its file name without .yaml. Plan and apply then name the pipeline: winch plan site."
+            },
+            {
+              "type": "paragraph",
+              "text": "An inventory, a pipeline, or a recipe can also be a key in winch.yaml, under inventories, pipelines, or recipes. The value of the key is the content of the file. A name in both places is an error."
+            },
+            {
+              "type": "heading",
+              "text": "Top-level inventory and pipeline"
+            },
+            {
+              "type": "paragraph",
+              "text": "hosts and groups at the top of winch.yaml are the only inventory of the project. They work with any number of pipelines. steps, handlers, parallelism, and health at the top of winch.yaml are the only pipeline. Then plan and apply take no pipeline name."
+            },
+            {
+              "type": "heading",
+              "text": "YAML"
+            },
+            {
+              "type": "paragraph",
+              "text": "All files are YAML 1.2. Only true and false are booleans: yes, no, on, and off are strings. File modes are strings: mode: \"0644\". Unknown keys and duplicate keys are errors. Anchors and aliases work. Merge keys (<<) do not. winch fmt fixes the indentation and the step key order."
+            }
+          ],
+          "keys": [
+            {
+              "name": "name",
+              "path": "project.name",
+              "type": "string",
+              "default": "",
+              "required": true,
+              "line": "letters, digits, ., _, and -",
+              "text": "Letters, digits, ., _, and -. It does not start with a dot. Hosts keep pending handlers and other state of the project under this name.",
+              "keys": []
+            },
+            {
+              "name": "inventory",
+              "path": "project.inventory",
+              "type": "string",
+              "default": "",
+              "required": false,
+              "line": "default for --inventory",
+              "text": "Default for --inventory. A project with more than one inventory and no default makes every run name its inventory with --inventory.",
+              "keys": []
+            },
+            {
+              "name": "recipients",
+              "path": "project.recipients",
+              "type": "list of strings",
+              "default": "",
+              "required": false,
+              "line": "age public keys",
+              "text": "Age public keys. winch encrypts each secret for all of them. winch secret init adds a key.",
+              "keys": []
+            },
+            {
+              "name": "vars",
+              "path": "project.vars",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "shared variable defaults",
+              "text": "Shared variable defaults, by name. A default can be a !secret, an !expr, or a !tpl. Run winch doc variables.",
+              "keys": []
+            },
+            {
+              "name": "inventories",
+              "path": "project.inventories",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "inventories kept in winch.yaml",
+              "text": "Inventories kept in winch.yaml, by name. The value of each is the content of an inventory file, as in inventories/<name>.yaml.",
+              "keys": []
+            },
+            {
+              "name": "pipelines",
+              "path": "project.pipelines",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "pipelines kept in winch.yaml",
+              "text": "Pipelines kept in winch.yaml, by name. The value of each is the content of a pipeline file, as in pipelines/<name>.yaml.",
+              "keys": []
+            },
+            {
+              "name": "recipes",
+              "path": "project.recipes",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "recipes kept in winch.yaml",
+              "text": "Recipes kept in winch.yaml, by name. The value of each is the content of a recipe file, as in recipes/<name>/recipe.yaml. Such a recipe has no templates/ or files/ directory. Its steps cannot use template, source, or the key of repo.",
+              "keys": []
+            },
+            {
+              "name": "hosts",
+              "path": "project.hosts",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "hosts of the only inventory",
+              "text": "Hosts of the only inventory, as in an inventory file. The project then has no other inventory. It can have any number of pipelines.",
+              "keys": []
+            },
+            {
+              "name": "groups",
+              "path": "project.groups",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "groups of the only inventory",
+              "text": "Groups of the only inventory, as in an inventory file.",
+              "keys": []
+            },
+            {
+              "name": "steps",
+              "path": "project.steps",
+              "type": "list of steps",
+              "default": "",
+              "required": false,
+              "line": "steps of the only pipeline",
+              "text": "Steps of the only pipeline. It has one stage on all hosts, and both have the name of the project. The project then has no other pipeline. Plan and apply take no pipeline name.",
+              "keys": []
+            },
+            {
+              "name": "handlers",
+              "path": "project.handlers",
+              "type": "map of lists of steps",
+              "default": "",
+              "required": false,
+              "line": "handlers of the only pipeline",
+              "text": "Handlers of the only pipeline, as in a pipeline file.",
+              "keys": []
+            },
+            {
+              "name": "parallelism",
+              "path": "project.parallelism",
+              "type": "integer",
+              "default": "",
+              "required": false,
+              "line": "parallelism of the only pipeline",
+              "text": "Parallelism of the only pipeline, as in a pipeline file.",
+              "keys": []
+            },
+            {
+              "name": "health",
+              "path": "project.health",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "health gate of the only pipeline",
+              "text": "Health gate of the only pipeline, as in a pipeline file.",
+              "keys": []
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "inventory",
+          "line": "hosts and groups",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "An inventory lists the hosts that winch manages, puts them in groups, and gives them values."
+            },
+            {
+              "type": "heading",
+              "text": "Files"
+            },
+            {
+              "type": "paragraph",
+              "text": "An inventory is a file in inventories/, such as inventories/production.yaml, or a key in inventories of winch.yaml. It holds data and secrets, but no templates or expressions."
+            },
+            {
+              "type": "heading",
+              "text": "Choosing the inventory"
+            },
+            {
+              "type": "paragraph",
+              "text": "--inventory <name> names the inventory of a run. inventory in winch.yaml names a default. A project with one inventory uses it. A project with more inventories and no default makes each run name its inventory, so a run against production is always deliberate."
+            },
+            {
+              "type": "heading",
+              "text": "Groups and values"
+            },
+            {
+              "type": "paragraph",
+              "text": "The group all contains every host. A host value beats a group value, and a group value beats a value of all. Two groups of one host that set different values for one variable, or for user, are an error, unless the host sets that value too."
+            },
+            {
+              "type": "heading",
+              "text": "SSH settings"
+            },
+            {
+              "type": "paragraph",
+              "text": "Every other SSH setting, such as the port or the key, comes from your SSH config. Its Host blocks match the host name, also when the host has an address."
+            },
+            {
+              "type": "heading",
+              "text": "Host patterns"
+            },
+            {
+              "type": "paragraph",
+              "text": "Host patterns select hosts in the hosts of a stage, in --hosts, and in winch run and winch exec:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "web",
+                  "the hosts in the group web, or the host named web"
+                ],
+                [
+                  "web,db",
+                  "the hosts in web or in db"
+                ],
+                [
+                  "web & prod",
+                  "the hosts in web and in prod"
+                ],
+                [
+                  "web & !web3",
+                  "the hosts in web, without web3"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "& and ! bind tighter than \",\". Hosts keep inventory order. A name that is neither a group nor a host is an error. A pattern with only ! names is an error: write all & !web, not !web."
+            },
+            {
+              "type": "example",
+              "text": "# inventories/production.yaml\nhosts:\n  mail.acme.com:\n    address: 192.0.2.10\n  monitor.acme.com:\n    address: 192.0.2.20\ngroups:\n  all:\n    user: admin\n    vars:\n      domain: acme.com\n  mail:\n    hosts: [mail.acme.com]\n    vars:\n      mail_server: true\n\n# winch.yaml\nname: acme\nvars:\n  domain: example.com\n  mail_server: false\nsteps:\n  - name: Install postfix on the mail servers\n    pkg:\n      name: postfix\n    when: !expr vars.mail_server\n"
+            }
+          ],
+          "keys": [
+            {
+              "name": "hosts",
+              "path": "inventory.hosts",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "keyed by host name",
+              "text": "Keyed by host name. Without address, the name is the SSH host name. A host name that YAML reads as a number, such as 1234, needs quotes. A host and a group cannot have the same name.",
+              "keys": [
+                {
+                  "name": "address",
+                  "path": "inventory.hosts.address",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "host name or IP for SSH",
+                  "text": "Host name or IP for SSH. Without it, the SSH config decides the host name, and host.address is the name of the host. The Host blocks of the SSH config match the host name, also with address. A port goes in the SSH config. Two hosts cannot have the same SSH host name, port, and jump host.",
+                  "keys": []
+                },
+                {
+                  "name": "user",
+                  "path": "inventory.hosts.user",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "SSH login user",
+                  "text": "SSH login user. Without it, the host takes the user of its groups, then of all, then of the SSH config. --user beats it. Every other SSH setting comes from your SSH config.",
+                  "keys": []
+                },
+                {
+                  "name": "vars",
+                  "path": "inventory.hosts.vars",
+                  "type": "map",
+                  "default": "",
+                  "required": false,
+                  "line": "variable values of the host",
+                  "text": "Variable values of the host. They beat the values of its groups.",
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "name": "groups",
+              "path": "inventory.groups",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "keyed by group name",
+              "text": "Keyed by group name. The group all contains every host. A host value beats a group value, and a group value beats a value of all.",
+              "keys": [
+                {
+                  "name": "user",
+                  "path": "inventory.groups.user",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "SSH login user of the members",
+                  "text": "SSH login user of the members. Two groups of one host with different users are an error, unless the host sets user.",
+                  "keys": []
+                },
+                {
+                  "name": "hosts",
+                  "path": "inventory.groups.hosts",
+                  "type": "list of strings",
+                  "default": "",
+                  "required": false,
+                  "line": "member host names",
+                  "text": "Member host names. The group all cannot have hosts. A group can be empty: hosts: [].",
+                  "keys": []
+                },
+                {
+                  "name": "vars",
+                  "path": "inventory.groups.vars",
+                  "type": "map",
+                  "default": "",
+                  "required": false,
+                  "line": "variable values of the members",
+                  "text": "Variable values of the members. Two groups of one host that set different values for one variable are an error, unless the host sets that value too.",
+                  "keys": []
+                }
+              ]
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "pipeline",
+          "line": "ordered stages that apply steps to hosts",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A pipeline is an ordered list of stages. Each stage applies its steps to a set of hosts."
+            },
+            {
+              "type": "heading",
+              "text": "Files"
+            },
+            {
+              "type": "paragraph",
+              "text": "A pipeline is a file in pipelines/, such as pipelines/site.yaml, or a key in pipelines of winch.yaml. winch plan site and winch apply site run it."
+            },
+            {
+              "type": "heading",
+              "text": "One stage or many"
+            },
+            {
+              "type": "paragraph",
+              "text": "Most pipelines run the same steps on every host. Such a pipeline holds the steps directly. It is one stage with the name of the pipeline. A pipeline whose hosts have different roles, or that must finish on some hosts before it starts on others, has stages."
+            },
+            {
+              "type": "heading",
+              "text": "Order"
+            },
+            {
+              "type": "paragraph",
+              "text": "Stages run in order. A stage starts when the previous stage finished on all its hosts. Inside a stage, each host runs its steps in order, without waiting for other hosts. A stage that matches no host is skipped. --stages runs only some stages, and --hosts only some hosts."
+            },
+            {
+              "type": "heading",
+              "text": "Steps of a stage"
+            },
+            {
+              "type": "paragraph",
+              "text": "A step in a stage can use a module directly. It cannot use template, source, or the key of repo: those read the files of a recipe."
+            },
+            {
+              "type": "heading",
+              "text": "Failures"
+            },
+            {
+              "type": "paragraph",
+              "text": "A failed host takes no part in later stages. The other hosts go on. A new run is the resume: steps that already succeeded check as ok."
+            },
+            {
+              "type": "example",
+              "text": "# pipelines/site.yaml\nstages:\n  - name: base\n    hosts: all\n    parallelism: 1\n    steps:\n      - timezone:\n          name: Etc/UTC\n  - name: web\n    hosts: web\n    health:\n      command: systemctl is-active nginx\n      stable: 10\n      timeout: 120\n    steps:\n      - recipe: nginx\n\n# winch.yaml\nname: acme\ninventories:\n  production:\n    hosts:\n      web1.acme.com: {}\n      web2.acme.com: {}\n    groups:\n      web:\n        hosts: [web1.acme.com, web2.acme.com]\nrecipes:\n  nginx:\n    steps:\n      - pkg:\n          name: nginx\n"
+            }
+          ],
+          "keys": [
+            {
+              "name": "stages",
+              "path": "pipeline.stages",
+              "type": "list of maps",
+              "default": "",
+              "required": false,
+              "line": "stages in run order",
+              "text": "Stages in run order. A stage starts when the previous stage finished on all its hosts. A pipeline with stages has no other key.",
+              "keys": [
+                {
+                  "name": "name",
+                  "path": "pipeline.stages.name",
+                  "type": "string",
+                  "default": "",
+                  "required": true,
+                  "line": "unique in the pipeline",
+                  "text": "Unique in the pipeline. It follows the rule of host names. --stages selects stages by name.",
+                  "keys": []
+                },
+                {
+                  "name": "hosts",
+                  "path": "pipeline.stages.hosts",
+                  "type": "string",
+                  "default": "all",
+                  "required": false,
+                  "line": "host pattern",
+                  "text": "Host pattern. Run winch doc inventory for the patterns.",
+                  "keys": []
+                },
+                {
+                  "name": "parallelism",
+                  "path": "pipeline.stages.parallelism",
+                  "type": "integer",
+                  "default": "",
+                  "required": false,
+                  "line": "maximum hosts at the same time",
+                  "text": "Maximum hosts at the same time. Hosts start in inventory order. The next host starts when a host finishes the stage and its health gate passes. A failure stops new hosts from starting. Running hosts finish the stage.",
+                  "keys": []
+                },
+                {
+                  "name": "health",
+                  "path": "pipeline.stages.health",
+                  "type": "map",
+                  "default": "",
+                  "required": false,
+                  "line": "check after a host changed in the stage",
+                  "text": "Check after a host changed in the stage. The gate runs on a host after it finishes the stage, when the stage has a change on that host. The plan marks it with * and does not run it. A gate that fails stays pending on the host, and the next apply runs it.",
+                  "keys": [
+                    {
+                      "name": "command",
+                      "path": "pipeline.stages.health.command",
+                      "type": "string",
+                      "default": "",
+                      "required": true,
+                      "line": "must exit 0",
+                      "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again.",
+                      "keys": []
+                    },
+                    {
+                      "name": "stable",
+                      "path": "pipeline.stages.health.stable",
+                      "type": "integer",
+                      "default": "0",
+                      "required": false,
+                      "line": "seconds the command keeps passing",
+                      "text": "Seconds the command keeps passing. It is less than timeout.",
+                      "keys": []
+                    },
+                    {
+                      "name": "timeout",
+                      "path": "pipeline.stages.health.timeout",
+                      "type": "integer",
+                      "default": "60",
+                      "required": false,
+                      "line": "seconds the gate has to pass",
+                      "text": "Seconds the gate has to pass. Then the host fails, and the error shows the end of the last output.",
+                      "keys": []
+                    }
+                  ]
+                },
+                {
+                  "name": "steps",
+                  "path": "pipeline.stages.steps",
+                  "type": "list of steps",
+                  "default": "",
+                  "required": true,
+                  "line": "recipe steps and module steps, in order",
+                  "text": "Recipe steps and module steps, in order.",
+                  "keys": []
+                },
+                {
+                  "name": "handlers",
+                  "path": "pipeline.stages.handlers",
+                  "type": "map of lists of steps",
+                  "default": "",
+                  "required": false,
+                  "line": "handlers of the stage",
+                  "text": "Handlers of the stage, as in a recipe. A module step of the stage notifies them.",
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "name": "hosts",
+              "path": "pipeline.hosts",
+              "type": "string",
+              "default": "all",
+              "required": false,
+              "line": "host pattern of a pipeline without stages",
+              "text": "Host pattern of a pipeline without stages. Run winch doc inventory for the patterns.",
+              "keys": []
+            },
+            {
+              "name": "parallelism",
+              "path": "pipeline.parallelism",
+              "type": "integer",
+              "default": "",
+              "required": false,
+              "line": "maximum hosts at the same time",
+              "text": "Maximum hosts at the same time. Hosts start in inventory order. The next host starts when a host finishes the stage and its health gate passes. A failure stops new hosts from starting. Running hosts finish the stage.",
+              "keys": []
+            },
+            {
+              "name": "health",
+              "path": "pipeline.health",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "check after a host changed in the stage",
+              "text": "Check after a host changed in the stage. The gate runs on a host after it finishes the stage, when the stage has a change on that host. The plan marks it with * and does not run it. A gate that fails stays pending on the host, and the next apply runs it.",
+              "keys": [
+                {
+                  "name": "command",
+                  "path": "pipeline.health.command",
+                  "type": "string",
+                  "default": "",
+                  "required": true,
+                  "line": "must exit 0",
+                  "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again.",
+                  "keys": []
+                },
+                {
+                  "name": "stable",
+                  "path": "pipeline.health.stable",
+                  "type": "integer",
+                  "default": "0",
+                  "required": false,
+                  "line": "seconds the command keeps passing",
+                  "text": "Seconds the command keeps passing. It is less than timeout.",
+                  "keys": []
+                },
+                {
+                  "name": "timeout",
+                  "path": "pipeline.health.timeout",
+                  "type": "integer",
+                  "default": "60",
+                  "required": false,
+                  "line": "seconds the gate has to pass",
+                  "text": "Seconds the gate has to pass. Then the host fails, and the error shows the end of the last output.",
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "name": "steps",
+              "path": "pipeline.steps",
+              "type": "list of steps",
+              "default": "",
+              "required": false,
+              "line": "steps of a pipeline without stages",
+              "text": "Steps of a pipeline without stages: recipe steps and module steps, in order.",
+              "keys": []
+            },
+            {
+              "name": "handlers",
+              "path": "pipeline.handlers",
+              "type": "map of lists of steps",
+              "default": "",
+              "required": false,
+              "line": "handlers of a pipeline without stages",
+              "text": "Handlers of a pipeline without stages, as in a recipe. A module step of the stage notifies them.",
+              "keys": []
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "recipe",
+          "line": "reusable groups of steps",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A recipe is a named group of steps that you can use again, with its own variables, templates, and files."
+            },
+            {
+              "type": "heading",
+              "text": "Files"
+            },
+            {
+              "type": "paragraph",
+              "text": "A recipe is a directory in recipes/ with a recipe.yaml, and optional templates/ and files/ directories. Or it is a key in recipes of winch.yaml, without templates or files. winch loads every recipe for every command, also a recipe that no pipeline uses."
+            },
+            {
+              "type": "heading",
+              "text": "Names"
+            },
+            {
+              "type": "paragraph",
+              "text": "A recipe name has lowercase letters, digits, and _. It can be the name of a module."
+            },
+            {
+              "type": "heading",
+              "text": "Running a recipe"
+            },
+            {
+              "type": "paragraph",
+              "text": "A step runs a recipe with recipe: <name>. A recipe step has only name, recipe, vars, and when. A recipe runs at most once per host in a run. Two stages can run the same recipe when their hosts do not overlap. A recipe cannot run another recipe."
+            },
+            {
+              "type": "heading",
+              "text": "Templates and files"
+            },
+            {
+              "type": "paragraph",
+              "text": "template reads from the templates/ directory of the recipe, and source from files/. Paths can name subdirectories. A template file uses the language of !tpl. Run winch doc templates."
+            },
+            {
+              "type": "example",
+              "text": "# recipes/nginx/recipe.yaml\nrequire:\n  - !expr facts.os.id in [\"debian\", \"ubuntu\"]\nvars:\n  nginx_port: 80\nsteps:\n  - pkg:\n      name: nginx\n  - name: Configure the site\n    file:\n      path: /etc/nginx/sites-enabled/default\n      template: site.tmpl\n      validate: nginx -t\n    notify: reload\n  - service:\n      name: nginx\n      running: true\n      enabled: true\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n\n# recipes/nginx/templates/site.tmpl\nserver {\n    listen {{ .vars.nginx_port }};\n}\n\n# winch.yaml\nname: acme\nhosts:\n  web1.acme.com: {}\nsteps:\n  - recipe: nginx\n    vars:\n      nginx_port: 8080\n"
+            }
+          ],
+          "keys": [
+            {
+              "name": "require",
+              "path": "recipe.require",
+              "type": "list of expressions",
+              "default": "",
+              "required": false,
+              "line": "conditions on facts",
+              "text": "Conditions on facts, each an !expr. Every host where the recipe runs in the pipeline meets all of them, or it fails at plan. They see only facts.",
+              "keys": []
+            },
+            {
+              "name": "vars",
+              "path": "recipe.vars",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "defaults of the recipe's own variables",
+              "text": "Defaults of the recipe's own variables. Their names start with the recipe name and _.",
+              "keys": []
+            },
+            {
+              "name": "steps",
+              "path": "recipe.steps",
+              "type": "list of steps",
+              "default": "",
+              "required": true,
+              "line": "module steps, in order",
+              "text": "Module steps, in order. A recipe cannot run another recipe.",
+              "keys": []
+            },
+            {
+              "name": "handlers",
+              "path": "recipe.handlers",
+              "type": "map of lists of steps",
+              "default": "",
+              "required": false,
+              "line": "steps that run after a change",
+              "text": "Steps that run after a change. They run after the last step of the recipe, when a step notified them. Run winch doc handlers.",
+              "keys": []
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "step",
+          "line": "keys that every step has",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A step is one action on a host: a module with its arguments, or a recipe."
+            },
+            {
+              "type": "heading",
+              "text": "Form"
+            },
+            {
+              "type": "paragraph",
+              "text": "A step is a map. It has one module key, such as pkg or file, with the arguments of the module as a map. Or it has recipe with the name of a recipe. Run winch doc <module> for the arguments of a module."
+            },
+            {
+              "type": "heading",
+              "text": "Computed values"
+            },
+            {
+              "type": "paragraph",
+              "text": "Any module argument can be a template or an expression, and so can then. when takes an expression. loop takes a list or an expression."
+            },
+            {
+              "type": "heading",
+              "text": "Evaluation"
+            },
+            {
+              "type": "paragraph",
+              "text": "On each host, winch evaluates when. When it is false, winch skips the step. Then winch evaluates loop, and the arguments for each element. winch checks the step on the host, and apply changes what differs."
+            },
+            {
+              "type": "heading",
+              "text": "Results"
+            },
+            {
+              "type": "paragraph",
+              "text": "A step that runs a command counts as changed: a cmd, and a service with restarted or reloaded. When a step fails, its host stops. Other hosts go on."
+            },
+            {
+              "type": "heading",
+              "text": "Key order"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch fmt puts the step keys in this order: name, the module or recipe, vars, when, loop, then, confirm_access, notify."
+            },
+            {
+              "type": "example",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nvars:\n  sites: [blog, shop]\nsteps:\n  - name: Install nginx\n    pkg:\n      name: nginx\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"# {{ .item }}\\n\"\n    when: !expr len(vars.sites) > 0\n    loop: !expr vars.sites\n    then: nginx -t\n    notify: reload\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n"
+            }
+          ],
+          "keys": [
+            {
+              "name": "name",
+              "path": "step.name",
+              "type": "string",
+              "default": "",
+              "required": false,
+              "line": "label in the plan and the logs",
+              "text": "Label in the plan and the logs. Without it, the plan shows the module and its main argument.",
+              "keys": []
+            },
+            {
+              "name": "recipe",
+              "path": "step.recipe",
+              "type": "string",
+              "default": "",
+              "required": false,
+              "line": "recipe to run, in place of a module",
+              "text": "Recipe to run, in place of a module. A recipe step has only name, recipe, vars, and when. A recipe runs at most once per host in a run.",
+              "keys": []
+            },
+            {
+              "name": "vars",
+              "path": "step.vars",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "variable values for this recipe step",
+              "text": "Variable values for this recipe step. A value can be an !expr or a !tpl, and an !expr can use match(). They beat the inventory, and --set beats them. Only a recipe step has vars.",
+              "keys": []
+            },
+            {
+              "name": "when",
+              "path": "step.when",
+              "type": "expression",
+              "default": "",
+              "required": false,
+              "line": "skips the step when false",
+              "text": "Skips the step when false. It is an !expr that gives true or false. winch evaluates none of the other keys of a skipped step. when runs once, before loop, and cannot use item.",
+              "keys": []
+            },
+            {
+              "name": "loop",
+              "path": "step.loop",
+              "type": "list or expression",
+              "default": "",
+              "required": false,
+              "line": "elements to run the step for, as item",
+              "text": "Elements to run the step for, as item. An !expr gives the list. loop: [] runs nothing and notifies nothing. A null element fails the host.",
+              "keys": []
+            },
+            {
+              "name": "then",
+              "path": "step.then",
+              "type": "string",
+              "default": "",
+              "required": false,
+              "line": "command after a change",
+              "text": "Command after a change. It runs right after the step changes something, before the next step. A failure of then fails the step. With loop, then runs once after the last element and cannot use item. A then that did not run stays pending on the host, and the next run runs it.",
+              "keys": []
+            },
+            {
+              "name": "confirm_access",
+              "path": "step.confirm_access",
+              "type": "boolean",
+              "default": "false",
+              "required": false,
+              "line": "SSH check with rollback, for a service step",
+              "text": "SSH check with rollback, for a service step. Only a service step can use it, in steps or in handlers. A firewall step gets the same check without it.\n\nBefore the step, winch keeps the old state of each path that the changed steps of the recipe wrote or removed in this run. It starts a 60-second rollback timer in a process of its own.\n\nAfter the step, winch opens a new SSH connection and runs a command, through sudo -n when the login user is not root. It tries twice, 5 seconds apart.\n\nWhen both tries fail, winch puts back the old files and runs daemon-reload after a unit file. It reverses a start or a stop of the step, and reloads or restarts the unit again. The host fails with the error \"no new SSH connection works: <error>; the old files are back\". When the SSH connection ends first, winch rolls back as it ends. When the process of winch on the host is gone, the timer rolls back.\n\nWhen a run ends before a notified handler with confirm_access ran, winch puts back the files of that handler at once. The next run applies the change again.\n\nA rollback puts back files only. It does not undo a change of a user or a group.",
+              "keys": []
+            },
+            {
+              "name": "notify",
+              "path": "step.notify",
+              "type": "string or list of strings",
+              "default": "",
+              "required": false,
+              "line": "handlers to run after a change",
+              "text": "Handlers to run after a change. Not a template or an expression. With loop, notify fires once when any element changed. Run winch doc handlers.",
+              "keys": []
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "handlers",
+          "line": "steps that run after a change",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A handler is a list of steps that runs once, after a step that notifies it changes something."
+            },
+            {
+              "type": "heading",
+              "text": "Declaring a handler"
+            },
+            {
+              "type": "paragraph",
+              "text": "handlers is a map in a recipe or in a stage. Each key is a handler name, and its value is a list of steps. A handler name has lowercase letters, digits, and _."
+            },
+            {
+              "type": "heading",
+              "text": "Notifying a handler"
+            },
+            {
+              "type": "paragraph",
+              "text": "notify on a step names a handler of the current recipe or stage, or <recipe>.<handler> of another recipe. That recipe must run in the same pipeline, on at least one host where the step runs. On a host where it does not run, winch drops the notification."
+            },
+            {
+              "type": "code",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nsteps:\n  - recipe: nginx\n  - file:\n      path: /etc/nginx/conf.d/gzip.conf\n      content: \"gzip on;\\n\"\n    notify: nginx.reload\nrecipes:\n  nginx:\n    steps:\n      - pkg:\n          name: nginx\n    handlers:\n      reload:\n        - service:\n            name: nginx\n            reloaded: true\n\n# A change of gzip.conf reloads nginx once, at the end of the stage.\n"
+            },
+            {
+              "type": "heading",
+              "text": "When a handler runs"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "A handler runs at most once per recipe run on a host. A handler of a stage runs at most once per stage run.",
+                "A handler runs after the last step of its recipe. When its recipe already ran on that host, it runs at the end of the current stage.",
+                "A handler of a stage runs after the last step of the stage and after the recipe handlers at the end of the stage. It runs before the health gate.",
+                "Handlers run in the order that the recipe or the stage declares them."
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Handler steps"
+            },
+            {
+              "type": "paragraph",
+              "text": "A handler step can have when. It cannot use notify or run a recipe. Only a handler step and winch run can use restarted and reloaded of service."
+            },
+            {
+              "type": "heading",
+              "text": "Pending handlers"
+            },
+            {
+              "type": "paragraph",
+              "text": "When a step notifies a handler, winch marks the handler as pending on the host before the step changes anything. The mark goes when the handler succeeds. When a run stops first, the handler stays pending. It runs the next time its recipe or stage runs on that host. The plan shows a handler that will run with \"!\"."
+            }
+          ],
+          "keys": [],
+          "functions": []
+        }
+      ]
+    },
+    {
+      "title": "Values",
+      "topics": [
+        {
+          "name": "variables",
+          "line": "named values for hosts, groups, and recipes",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Variables are named values that steps, templates, and expressions read."
+            },
+            {
+              "type": "heading",
+              "text": "Sources"
+            },
+            {
+              "type": "paragraph",
+              "text": "Each host has its own value. A value comes from these sources. A later source replaces an earlier one:"
+            },
+            {
+              "type": "list",
+              "ordered": true,
+              "items": [
+                "the default",
+                "the vars of the groups of the host, then of the host",
+                "the vars of the recipe step",
+                "--set vars.<name>=<value>"
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Maps and lists do not merge."
+            },
+            {
+              "type": "heading",
+              "text": "Defaults"
+            },
+            {
+              "type": "paragraph",
+              "text": "A default is declared once: in vars of winch.yaml, or in vars of the recipe that owns it. A recipe's own defaults start with the recipe name and _. A default can be a !secret, a template, or an expression. It sees vars, host, and facts, but not match(). A cycle between defaults is an error."
+            },
+            {
+              "type": "heading",
+              "text": "Variables without a default"
+            },
+            {
+              "type": "paragraph",
+              "text": "A variable without a default needs no declaration. A read of it is enough, and the variable is required where it is read. A variable that may stay unset needs a default, such as relay_host: \"\"."
+            },
+            {
+              "type": "heading",
+              "text": "Names and reads"
+            },
+            {
+              "type": "paragraph",
+              "text": "A variable name has lowercase letters, digits, and _. A read names the variable: vars.domain, .vars.domain, $.vars.domain, or host.vars.domain. Any other read of the whole map, such as keys(vars) or range .vars, is an error. A map variable holds data that a step reads by key: vars.users[item]. host.vars holds the variables of the host without the vars of a recipe step."
+            },
+            {
+              "type": "heading",
+              "text": "Types"
+            },
+            {
+              "type": "paragraph",
+              "text": "Variables have no types. A value keeps the type that YAML gives it. --set parses its value as YAML. Quote a value that YAML would change: --set 'vars.php_version=\"8.0\"'."
+            },
+            {
+              "type": "example",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  mail.acme.com:\n    vars:\n      relay_host: smtp.acme.com\n  web1.acme.com: {}\ngroups:\n  all:\n    vars:\n      admin_email: ops@acme.com\nvars:\n  domain: acme.com\n  relay_host: \"\"\nsteps:\n  - recipe: motd\n    vars:\n      motd_text: Managed by winch\nrecipes:\n  motd:\n    vars:\n      motd_text: Welcome\n    steps:\n      - file:\n          path: /etc/motd\n          content: !tpl \"{{ .vars.motd_text }} on {{ .vars.domain }}\\n\"\n      - file:\n          path: /etc/admin_email\n          content: !tpl \"{{ .vars.admin_email }}\\n\"\n      - file:\n          path: /etc/relay_host\n          content: !tpl \"{{ .vars.relay_host }}\\n\"\n        when: !expr vars.relay_host != \"\"\n"
+            }
+          ],
+          "keys": [],
+          "functions": []
+        },
+        {
+          "name": "templates",
+          "line": "text with values filled in (!tpl)",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A template is text in which winch fills in the values of each host."
+            },
+            {
+              "type": "heading",
+              "text": "Syntax"
+            },
+            {
+              "type": "paragraph",
+              "text": "The !tpl tag marks a template, a Go text/template. It builds text, such as a path or a line. The template files of a recipe use the same language."
+            },
+            {
+              "type": "heading",
+              "text": "Data"
+            },
+            {
+              "type": "paragraph",
+              "text": "A template reads these names with a leading dot:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  ".vars",
+                  "the variables of the host, with the vars of the recipe step"
+                ],
+                [
+                  ".facts",
+                  "the facts of the host; run winch doc facts"
+                ],
+                [
+                  ".host",
+                  "name, short, address, groups, and vars of the host; address is the name when the host has no address"
+                ],
+                [
+                  ".item",
+                  "the current element in a step with loop"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Inside range, \".\" is the element. $.vars reads the variables."
+            },
+            {
+              "type": "heading",
+              "text": "Where templates go"
+            },
+            {
+              "type": "paragraph",
+              "text": "Any module argument can be a template or an expression, and so can then."
+            },
+            {
+              "type": "heading",
+              "text": "Functions and actions"
+            },
+            {
+              "type": "paragraph",
+              "text": "A function takes its arguments after its name, separated by spaces: {{ join .vars.names \", \" }}. Templates also have the actions of Go's text/template: if, else, range, with, define, template, block, break, and continue, and the variables $x := value."
+            },
+            {
+              "type": "heading",
+              "text": "Missing values"
+            },
+            {
+              "type": "paragraph",
+              "text": "A template that reads a missing map key fails. Use get for a map key that may be missing. A variable needs a value or a default; get does not read the host's own .vars. A template that prints a null value fails."
+            },
+            {
+              "type": "heading",
+              "text": "Quoting"
+            },
+            {
+              "type": "paragraph",
+              "text": "A value goes into a command as it is. Quote a value that must stay one word with quote. Quote a YAML value that starts with a quote, [, {, &, *, or !, or that contains \": \" or \" #\". A template that starts with {{ needs quotes."
+            },
+            {
+              "type": "heading",
+              "text": "Other hosts"
+            },
+            {
+              "type": "paragraph",
+              "text": "Templates have no match(). To list other hosts, give a recipe step a variable with an !expr that uses match(), and range over it in a template of the recipe."
+            },
+            {
+              "type": "heading",
+              "text": "When they run"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch evaluates templates on the machine that runs winch, during the plan. They cannot read the result of a step. winch checks each one when it loads the project: an unknown name or a syntax error is an error. An error while winch evaluates one for a host fails that host. The other hosts go on."
+            },
+            {
+              "type": "example",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.acme.com: {}\n  web2.acme.com: {}\nvars:\n  sites: [blog, shop]\n  admins: [ann, bob]\nsteps:\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"server_name {{ .item }}.{{ .host.short }};\\n\"\n    loop: !expr vars.sites\n  - name: Allow the admins\n    file:\n      path: /etc/ssh/sshd_config.d/admins.conf\n      content: !tpl \"AllowUsers{{ range .vars.admins }} {{ . }}{{ end }}\\n\"\n  - name: List the other hosts\n    recipe: peers\n    vars:\n      peers_hosts: !expr filter(match(\"all\"), .name != host.name)\nrecipes:\n  peers:\n    steps:\n      - file:\n          path: /etc/peers\n          content: !tpl \"{{ range .vars.peers_hosts }}{{ .name }} {{ .address }}\\n{{ end }}\"\n"
+            }
+          ],
+          "keys": [],
+          "functions": [
+            {
+              "name": "and",
+              "line": "and x y: the first empty argument, or the last argument.",
+              "text": "and x y: the first empty argument, or the last argument. In an expression, and is an operator."
+            },
+            {
+              "name": "call",
+              "line": "call f args: the result of the function f.",
+              "text": "call f args: the result of the function f. Project data holds no functions."
+            },
+            {
+              "name": "eq",
+              "line": "eq a b: true when a equals b.",
+              "text": "eq a b: true when a equals b. With more arguments, true when a equals any of them. In an expression, use ==."
+            },
+            {
+              "name": "ge",
+              "line": "ge a b: true when a >= b.",
+              "text": "ge a b: true when a >= b."
+            },
+            {
+              "name": "get",
+              "line": "get m key: the value of key in the map m, or nothing when m has no such key.",
+              "text": "get m key: the value of key in the map m, or nothing when m has no such key. It reads a key that a map may leave out: {{ with get . \"endpoint\" }}Endpoint = {{ . }}{{ end }}. It does not read the host's own .vars: a variable that may have no value needs a default."
+            },
+            {
+              "name": "gt",
+              "line": "gt a b: true when a > b.",
+              "text": "gt a b: true when a > b."
+            },
+            {
+              "name": "has",
+              "line": "has list v: true when list contains v.",
+              "text": "has list v: true when list contains v. In an expression, use v in list."
+            },
+            {
+              "name": "html",
+              "line": "html s: s with the special characters of HTML escaped.",
+              "text": "html s: s with the special characters of HTML escaped."
+            },
+            {
+              "name": "index",
+              "line": "index x k: the element of the map or the list x at the key or the index k.",
+              "text": "index x k: the element of the map or the list x at the key or the index k. More keys read deeper. A missing map key is an error. Use get for a key that may be missing."
+            },
+            {
+              "name": "join",
+              "line": "join list sep: the elements of list as text, joined with sep.",
+              "text": "join list sep: the elements of list as text, joined with sep."
+            },
+            {
+              "name": "js",
+              "line": "js s: s escaped for a JavaScript string.",
+              "text": "js s: s escaped for a JavaScript string."
+            },
+            {
+              "name": "json",
+              "line": "json v: v as JSON on one line.",
+              "text": "json v: v as JSON on one line. Map keys are in sorted order, and non-ASCII characters stay UTF-8. The output is also a valid YAML value, so it writes a string into a JSON or a YAML file: \"data-root\": {{ json .vars.docker_root }}."
+            },
+            {
+              "name": "le",
+              "line": "le a b: true when a <= b.",
+              "text": "le a b: true when a <= b."
+            },
+            {
+              "name": "len",
+              "line": "len x: the length of a string, a list, or a map.",
+              "text": "len x: the length of a string, a list, or a map."
+            },
+            {
+              "name": "lt",
+              "line": "lt a b: true when a < b.",
+              "text": "lt a b: true when a < b."
+            },
+            {
+              "name": "ne",
+              "line": "ne a b: true when a does not equal b.",
+              "text": "ne a b: true when a does not equal b."
+            },
+            {
+              "name": "not",
+              "line": "not x: true when x is empty or false.",
+              "text": "not x: true when x is empty or false. In an expression, not and ! are operators."
+            },
+            {
+              "name": "or",
+              "line": "or x y: the first argument that is not empty, or the last argument.",
+              "text": "or x y: the first argument that is not empty, or the last argument. In an expression, or is an operator."
+            },
+            {
+              "name": "print",
+              "line": "print args: the arguments as text, as Go's fmt.Sprint gives them.",
+              "text": "print args: the arguments as text, as Go's fmt.Sprint gives them."
+            },
+            {
+              "name": "printf",
+              "line": "printf format args: the arguments formatted as Go's fmt.Sprintf does: {{ printf \"%05d\" .vars.uid }}.",
+              "text": "printf format args: the arguments formatted as Go's fmt.Sprintf does: {{ printf \"%05d\" .vars.uid }}."
+            },
+            {
+              "name": "println",
+              "line": "println args: the arguments as text, with spaces between them and a newline at the end.",
+              "text": "println args: the arguments as text, with spaces between them and a newline at the end."
+            },
+            {
+              "name": "quote",
+              "line": "quote s: s in single quotes for sh, each ' as '\\''.",
+              "text": "quote s: s in single quotes for sh, each ' as '\\''. A value goes into a command as it is. Quote a value that must stay one word: then: !tpl \"postmap {{ quote .vars.map }}\"."
+            },
+            {
+              "name": "slice",
+              "line": "slice x i j: the part of the string or the list x from the index i up to j.",
+              "text": "slice x i j: the part of the string or the list x from the index i up to j. In an expression, use x[i:j]."
+            },
+            {
+              "name": "sqlquote",
+              "line": "sqlquote s: s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\.",
+              "text": "sqlquote s: s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\. For PostgreSQL, write E before it. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
+            },
+            {
+              "name": "title",
+              "line": "title s: s with the first letter of each word in upper case.",
+              "text": "title s: s with the first letter of each word in upper case."
+            },
+            {
+              "name": "urlquery",
+              "line": "urlquery s: s escaped for the query of a URL.",
+              "text": "urlquery s: s escaped for the query of a URL."
+            }
+          ]
+        },
+        {
+          "name": "expressions",
+          "line": "computed values (!expr)",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "An expression computes a value for each host, such as a list, a number, or true or false."
+            },
+            {
+              "type": "heading",
+              "text": "Syntax"
+            },
+            {
+              "type": "paragraph",
+              "text": "The !expr tag marks an expression in the language of expr (expr-lang.org). Its result keeps its type: a list, a number, a boolean, a map, or a string."
+            },
+            {
+              "type": "heading",
+              "text": "Data"
+            },
+            {
+              "type": "paragraph",
+              "text": "An expression reads these names without a leading dot:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "vars",
+                  "the variables of the host, with the vars of the recipe step"
+                ],
+                [
+                  "facts",
+                  "the facts of the host; run winch doc facts"
+                ],
+                [
+                  "host",
+                  "name, short, address, groups, and vars of the host; address is the name when the host has no address"
+                ],
+                [
+                  "item",
+                  "the current element in a step with loop"
+                ],
+                [
+                  "match(p)",
+                  "the hosts that match the host pattern p, with the fields of host"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "match(p) reads the inventory, not the --hosts selection. A host from match() has only the vars that need no facts. A default cannot use match()."
+            },
+            {
+              "type": "heading",
+              "text": "Where expressions go"
+            },
+            {
+              "type": "paragraph",
+              "text": "Any module argument can be an expression or a template, and so can then. when takes an expression. loop takes a list or an expression."
+            },
+            {
+              "type": "heading",
+              "text": "Operators"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "+ - * / % **",
+                  "arithmetic"
+                ],
+                [
+                  "== != < > <= >=",
+                  "comparison"
+                ],
+                [
+                  "and or not",
+                  "logic, also && || !"
+                ],
+                [
+                  "in",
+                  "membership in a list or a map"
+                ],
+                [
+                  "contains startsWith endsWith",
+                  "text tests"
+                ],
+                [
+                  "matches",
+                  "regular expression test"
+                ],
+                [
+                  "c ? a : b",
+                  "choice"
+                ],
+                [
+                  "a ?? b",
+                  "a, or b when a is nil"
+                ],
+                [
+                  "[] ?.",
+                  "read an element or a key"
+                ],
+                [
+                  "x[i:j] 1..3",
+                  "slice and range"
+                ],
+                [
+                  "|",
+                  "pipe: vars.name | lower()"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Predicates"
+            },
+            {
+              "type": "paragraph",
+              "text": "In a predicate, such as the second argument of filter, # is the element, and .name reads the key name of a map element: filter(vars.users, .uid >= 1000)."
+            },
+            {
+              "type": "heading",
+              "text": "Missing values"
+            },
+            {
+              "type": "paragraph",
+              "text": "A missing map key is nil. A module argument whose expression gives null fails the host."
+            },
+            {
+              "type": "heading",
+              "text": "Quoting"
+            },
+            {
+              "type": "paragraph",
+              "text": "Quote a YAML value that starts with a quote, [, {, &, *, or !, or that contains \": \" or \" #\"."
+            },
+            {
+              "type": "heading",
+              "text": "When they run"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch evaluates expressions on the machine that runs winch, during the plan. They cannot read the result of a step. winch checks each one when it loads the project: an unknown name or a syntax error is an error. An error while winch evaluates one for a host fails that host. The other hosts go on. $env and now() are errors in every expression."
+            },
+            {
+              "type": "example",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  mail.acme.com: {}\n  web1.acme.com: {}\nvars:\n  mail_server: false\n  domain: acme.com\n  admins: [ann, bob]\n  mailname: !expr 'vars.mail_server ? vars.domain : host.name'\nsteps:\n  - name: Set the mail name\n    file:\n      path: /etc/mailname\n      content: !expr 'vars.mailname + \"\\n\"'\n    when: !expr vars.mail_server\n  - name: Add the admins\n    user:\n      name: !expr item\n      groups: [sudo]\n    loop: !expr sort(vars.admins)\n  - name: List the other hosts\n    file:\n      path: /etc/peers\n      content: !expr 'join(map(filter(match(\"all\"), .name != host.name), .address), \"\\n\") + \"\\n\"'\n"
+            }
+          ],
+          "keys": [],
+          "functions": [
+            {
+              "name": "abs",
+              "line": "abs(n): the absolute value of the number n.",
+              "text": "abs(n): the absolute value of the number n."
+            },
+            {
+              "name": "all",
+              "line": "all(list, pred): true when pred is true for each element.",
+              "text": "all(list, pred): true when pred is true for each element. In pred, # is the element, and .name reads the key name of a map element: all(vars.ports, # > 0)."
+            },
+            {
+              "name": "any",
+              "line": "any(list, pred): true when pred is true for at least one element.",
+              "text": "any(list, pred): true when pred is true for at least one element."
+            },
+            {
+              "name": "bitand",
+              "line": "bitand(a, b): the bitwise AND of two integers.",
+              "text": "bitand(a, b): the bitwise AND of two integers."
+            },
+            {
+              "name": "bitnand",
+              "line": "bitnand(a, b): the bitwise AND NOT of two integers.",
+              "text": "bitnand(a, b): the bitwise AND NOT of two integers."
+            },
+            {
+              "name": "bitnot",
+              "line": "bitnot(a): the bitwise NOT of an integer.",
+              "text": "bitnot(a): the bitwise NOT of an integer."
+            },
+            {
+              "name": "bitor",
+              "line": "bitor(a, b): the bitwise OR of two integers.",
+              "text": "bitor(a, b): the bitwise OR of two integers."
+            },
+            {
+              "name": "bitshl",
+              "line": "bitshl(a, n): a shifted left by n bits.",
+              "text": "bitshl(a, n): a shifted left by n bits."
+            },
+            {
+              "name": "bitshr",
+              "line": "bitshr(a, n): a shifted right by n bits, with its sign.",
+              "text": "bitshr(a, n): a shifted right by n bits, with its sign."
+            },
+            {
+              "name": "bitushr",
+              "line": "bitushr(a, n): a shifted right by n bits, without its sign.",
+              "text": "bitushr(a, n): a shifted right by n bits, without its sign."
+            },
+            {
+              "name": "bitxor",
+              "line": "bitxor(a, b): the bitwise XOR of two integers.",
+              "text": "bitxor(a, b): the bitwise XOR of two integers."
+            },
+            {
+              "name": "ceil",
+              "line": "ceil(n): n rounded up to an integer value.",
+              "text": "ceil(n): n rounded up to an integer value."
+            },
+            {
+              "name": "concat",
+              "line": "concat(a, b, ...): the lists joined into one list.",
+              "text": "concat(a, b, ...): the lists joined into one list."
+            },
+            {
+              "name": "count",
+              "line": "count(list, pred): the number of elements for which pred is true.",
+              "text": "count(list, pred): the number of elements for which pred is true. Without pred, the number of true elements."
+            },
+            {
+              "name": "date",
+              "line": "date(s), date(s, layout), or date(s, layout, zone): the time in the text s, such as date(\"2026-10-30\").",
+              "text": "date(s), date(s, layout), or date(s, layout, zone): the time in the text s, such as date(\"2026-10-30\"). The layout is a Go time layout. now() is a load error, so a plan does not depend on the clock."
+            },
+            {
+              "name": "duration",
+              "line": "duration(s): the duration in the text s, such as duration(\"1h30m\").",
+              "text": "duration(s): the duration in the text s, such as duration(\"1h30m\")."
+            },
+            {
+              "name": "filter",
+              "line": "filter(list, pred): the elements for which pred is true: filter(match(\"all\"), .name != host.name).",
+              "text": "filter(list, pred): the elements for which pred is true: filter(match(\"all\"), .name != host.name)."
+            },
+            {
+              "name": "find",
+              "line": "find(list, pred): the first element for which pred is true, or nil.",
+              "text": "find(list, pred): the first element for which pred is true, or nil."
+            },
+            {
+              "name": "findIndex",
+              "line": "findIndex(list, pred): the index of the first element for which pred is true, or -1.",
+              "text": "findIndex(list, pred): the index of the first element for which pred is true, or -1."
+            },
+            {
+              "name": "findLast",
+              "line": "findLast(list, pred): the last element for which pred is true, or nil.",
+              "text": "findLast(list, pred): the last element for which pred is true, or nil."
+            },
+            {
+              "name": "findLastIndex",
+              "line": "findLastIndex(list, pred): the index of the last element for which pred is true, or -1.",
+              "text": "findLastIndex(list, pred): the index of the last element for which pred is true, or -1."
+            },
+            {
+              "name": "first",
+              "line": "first(list): the first element, or nil for an empty list.",
+              "text": "first(list): the first element, or nil for an empty list."
+            },
+            {
+              "name": "flatten",
+              "line": "flatten(list): the elements of the list and of its nested lists, in one list.",
+              "text": "flatten(list): the elements of the list and of its nested lists, in one list."
+            },
+            {
+              "name": "float",
+              "line": "float(v): the number or the text v as a float.",
+              "text": "float(v): the number or the text v as a float."
+            },
+            {
+              "name": "floor",
+              "line": "floor(n): n rounded down to an integer value.",
+              "text": "floor(n): n rounded down to an integer value."
+            },
+            {
+              "name": "fromBase64",
+              "line": "fromBase64(s): the text that the base64 text s encodes.",
+              "text": "fromBase64(s): the text that the base64 text s encodes."
+            },
+            {
+              "name": "fromJSON",
+              "line": "fromJSON(s): the value of the JSON text s.",
+              "text": "fromJSON(s): the value of the JSON text s."
+            },
+            {
+              "name": "fromPairs",
+              "line": "fromPairs(list): a map from a list of [key, value] pairs.",
+              "text": "fromPairs(list): a map from a list of [key, value] pairs."
+            },
+            {
+              "name": "get",
+              "line": "get(m, key): the value of key in the map m, or nil when m has no such key.",
+              "text": "get(m, key): the value of key in the map m, or nil when m has no such key. get(list, i) gives the element at the index i, or nil."
+            },
+            {
+              "name": "groupBy",
+              "line": "groupBy(list, pred): a map from each result of pred to the list of elements that give it.",
+              "text": "groupBy(list, pred): a map from each result of pred to the list of elements that give it."
+            },
+            {
+              "name": "hasPrefix",
+              "line": "hasPrefix(s, prefix): true when s starts with prefix.",
+              "text": "hasPrefix(s, prefix): true when s starts with prefix. The operator startsWith does the same."
+            },
+            {
+              "name": "hasSuffix",
+              "line": "hasSuffix(s, suffix): true when s ends with suffix.",
+              "text": "hasSuffix(s, suffix): true when s ends with suffix. The operator endsWith does the same."
+            },
+            {
+              "name": "indexOf",
+              "line": "indexOf(s, sub): the index of the first sub in s, or -1.",
+              "text": "indexOf(s, sub): the index of the first sub in s, or -1."
+            },
+            {
+              "name": "int",
+              "line": "int(v): the number or the text v as an integer: int(\"8080\").",
+              "text": "int(v): the number or the text v as an integer: int(\"8080\")."
+            },
+            {
+              "name": "join",
+              "line": "join(list, sep): the strings of list joined with sep.",
+              "text": "join(list, sep): the strings of list joined with sep."
+            },
+            {
+              "name": "json",
+              "line": "json(v): v as JSON on one line.",
+              "text": "json(v): v as JSON on one line. Map keys are in sorted order, and non-ASCII characters stay UTF-8. The output is also a valid YAML value."
+            },
+            {
+              "name": "keys",
+              "line": "keys(m): the keys of the map m, in sorted order.",
+              "text": "keys(m): the keys of the map m, in sorted order. It cannot read vars itself: name each variable."
+            },
+            {
+              "name": "last",
+              "line": "last(list): the last element, or nil for an empty list.",
+              "text": "last(list): the last element, or nil for an empty list."
+            },
+            {
+              "name": "lastIndexOf",
+              "line": "lastIndexOf(s, sub): the index of the last sub in s, or -1.",
+              "text": "lastIndexOf(s, sub): the index of the last sub in s, or -1."
+            },
+            {
+              "name": "len",
+              "line": "len(x): the length of a string, a list, or a map.",
+              "text": "len(x): the length of a string, a list, or a map."
+            },
+            {
+              "name": "lower",
+              "line": "lower(s): s in lower case.",
+              "text": "lower(s): s in lower case."
+            },
+            {
+              "name": "map",
+              "line": "map(list, pred): the result of pred for each element: map(vars.users, .name).",
+              "text": "map(list, pred): the result of pred for each element: map(vars.users, .name)."
+            },
+            {
+              "name": "match",
+              "line": "match(pattern): the hosts that match the host pattern, each with name, short, address, groups, and vars, as host has.",
+              "text": "match(pattern): the hosts that match the host pattern, each with name, short, address, groups, and vars, as host has. It reads the inventory, not the --hosts selection. A host from match() has only the vars that need no facts. It works in steps, not in defaults. A constant pattern that matches no host is a load error."
+            },
+            {
+              "name": "max",
+              "line": "max(a, b, ...), or max(list): the largest number.",
+              "text": "max(a, b, ...), or max(list): the largest number."
+            },
+            {
+              "name": "mean",
+              "line": "mean(list): the average of the numbers.",
+              "text": "mean(list): the average of the numbers."
+            },
+            {
+              "name": "median",
+              "line": "median(list): the median of the numbers.",
+              "text": "median(list): the median of the numbers."
+            },
+            {
+              "name": "min",
+              "line": "min(a, b, ...), or min(list): the smallest number.",
+              "text": "min(a, b, ...), or min(list): the smallest number."
+            },
+            {
+              "name": "none",
+              "line": "none(list, pred): true when pred is false for each element.",
+              "text": "none(list, pred): true when pred is false for each element."
+            },
+            {
+              "name": "one",
+              "line": "one(list, pred): true when pred is true for exactly one element.",
+              "text": "one(list, pred): true when pred is true for exactly one element."
+            },
+            {
+              "name": "quote",
+              "line": "quote(s): s in single quotes for sh, each ' as '\\''.",
+              "text": "quote(s): s in single quotes for sh, each ' as '\\''. A value goes into a command as it is. Quote a value that must stay one word: then: !expr '\"postmap \" + quote(vars.map)'."
+            },
+            {
+              "name": "reduce",
+              "line": "reduce(list, pred, initial): one value from all elements.",
+              "text": "reduce(list, pred, initial): one value from all elements. In pred, #acc is the value so far, # the element, and #index its index: reduce(vars.sizes, #acc + #, 0)."
+            },
+            {
+              "name": "repeat",
+              "line": "repeat(s, n): s n times.",
+              "text": "repeat(s, n): s n times."
+            },
+            {
+              "name": "replace",
+              "line": "replace(s, old, new): s with each old replaced by new.",
+              "text": "replace(s, old, new): s with each old replaced by new."
+            },
+            {
+              "name": "reverse",
+              "line": "reverse(list): the elements in reverse order.",
+              "text": "reverse(list): the elements in reverse order."
+            },
+            {
+              "name": "round",
+              "line": "round(n): n rounded to the nearest integer value.",
+              "text": "round(n): n rounded to the nearest integer value."
+            },
+            {
+              "name": "sort",
+              "line": "sort(list), or sort(list, \"desc\"): the elements in ascending or descending order.",
+              "text": "sort(list), or sort(list, \"desc\"): the elements in ascending or descending order."
+            },
+            {
+              "name": "sortBy",
+              "line": "sortBy(list, pred), or sortBy(list, pred, \"desc\"): the elements in the order of the results of pred: sortBy(vars.users, .uid).",
+              "text": "sortBy(list, pred), or sortBy(list, pred, \"desc\"): the elements in the order of the results of pred: sortBy(vars.users, .uid)."
+            },
+            {
+              "name": "split",
+              "line": "split(s, sep), or split(s, sep, n): the parts of s between each sep.",
+              "text": "split(s, sep), or split(s, sep, n): the parts of s between each sep. With n, at most n parts."
+            },
+            {
+              "name": "splitAfter",
+              "line": "splitAfter(s, sep), or splitAfter(s, sep, n): the parts of s after each sep, each with sep at its end.",
+              "text": "splitAfter(s, sep), or splitAfter(s, sep, n): the parts of s after each sep, each with sep at its end."
+            },
+            {
+              "name": "sqlquote",
+              "line": "sqlquote(s): s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\.",
+              "text": "sqlquote(s): s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\. For PostgreSQL, write E before it. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
+            },
+            {
+              "name": "string",
+              "line": "string(v): v as text: string(8080) is \"8080\".",
+              "text": "string(v): v as text: string(8080) is \"8080\"."
+            },
+            {
+              "name": "sum",
+              "line": "sum(list), or sum(list, pred): the sum of the numbers, or of the results of pred.",
+              "text": "sum(list), or sum(list, pred): the sum of the numbers, or of the results of pred."
+            },
+            {
+              "name": "take",
+              "line": "take(list, n): the first n elements.",
+              "text": "take(list, n): the first n elements."
+            },
+            {
+              "name": "timezone",
+              "line": "timezone(name): the time zone name, such as \"Europe/Berlin\", for the In method of a date.",
+              "text": "timezone(name): the time zone name, such as \"Europe/Berlin\", for the In method of a date."
+            },
+            {
+              "name": "toBase64",
+              "line": "toBase64(s): s in base64.",
+              "text": "toBase64(s): s in base64."
+            },
+            {
+              "name": "toPairs",
+              "line": "toPairs(m): the [key, value] pairs of the map m, in sorted key order.",
+              "text": "toPairs(m): the [key, value] pairs of the map m, in sorted key order."
+            },
+            {
+              "name": "trim",
+              "line": "trim(s), or trim(s, chars): s without white space, or without the characters in chars, at both ends.",
+              "text": "trim(s), or trim(s, chars): s without white space, or without the characters in chars, at both ends."
+            },
+            {
+              "name": "trimPrefix",
+              "line": "trimPrefix(s, prefix): s without prefix at its start.",
+              "text": "trimPrefix(s, prefix): s without prefix at its start."
+            },
+            {
+              "name": "trimSuffix",
+              "line": "trimSuffix(s, suffix): s without suffix at its end.",
+              "text": "trimSuffix(s, suffix): s without suffix at its end."
+            },
+            {
+              "name": "type",
+              "line": "type(v): the type of v as text: nil, bool, int, float, string, array, map, time.Time for a date, or time.Duration.",
+              "text": "type(v): the type of v as text: nil, bool, int, float, string, array, map, time.Time for a date, or time.Duration."
+            },
+            {
+              "name": "uniq",
+              "line": "uniq(list): the elements without repeats, in their first order.",
+              "text": "uniq(list): the elements without repeats, in their first order."
+            },
+            {
+              "name": "upper",
+              "line": "upper(s): s in upper case.",
+              "text": "upper(s): s in upper case."
+            },
+            {
+              "name": "values",
+              "line": "values(m): the values of the map m, in the order of its sorted keys.",
+              "text": "values(m): the values of the map m, in the order of its sorted keys."
+            }
+          ]
+        },
+        {
+          "name": "facts",
+          "line": "values that winch reads from each host",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "Facts are values that winch reads from each host before the plan, such as the OS release."
+            },
+            {
+              "type": "heading",
+              "text": "Reading a fact"
+            },
+            {
+              "type": "paragraph",
+              "text": "Expressions read a fact as facts.os.id, and templates as {{ .facts.os.id }}. Facts are a fixed set. A read of an unknown fact is an error."
+            },
+            {
+              "type": "code",
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nsteps:\n  - recipe: base\nrecipes:\n  base:\n    require:\n      - !expr facts.os.id == \"debian\" and facts.os.version == \"13\"\n    steps:\n      - reboot:\n          if_required: true\n        when: !expr facts.reboot_required\n\n# The plan fails a host that is not Debian 13. A host that needs a\n# reboot reboots.\n"
+            },
+            {
+              "type": "heading",
+              "text": "When winch reads them"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch reads the facts once per host per run, before the first step, and again after a reboot. They describe the host before the run."
+            }
+          ],
+          "keys": [
+            {
+              "name": "os",
+              "path": "facts.os",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "OS release of the host",
+              "text": "OS release of the host. winch reads id, version, and codename from /etc/os-release, or from /usr/lib/os-release when the first does not exist.",
+              "keys": [
+                {
+                  "name": "id",
+                  "path": "facts.os.id",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "distribution, such as debian or ubuntu",
+                  "text": "Distribution, such as debian or ubuntu.",
+                  "keys": []
+                },
+                {
+                  "name": "version",
+                  "path": "facts.os.version",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "release number, such as 13 or 24.04",
+                  "text": "Release number, such as 13 or 24.04. It is a string: compare it with a string, such as \"13\".",
+                  "keys": []
+                },
+                {
+                  "name": "codename",
+                  "path": "facts.os.codename",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "release code name, such as trixie or noble",
+                  "text": "Release code name, such as trixie or noble.",
+                  "keys": []
+                },
+                {
+                  "name": "arch",
+                  "path": "facts.os.arch",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "CPU architecture",
+                  "text": "CPU architecture: amd64 or arm64.",
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "name": "reboot_required",
+              "path": "facts.reboot_required",
+              "type": "boolean",
+              "default": "",
+              "required": false,
+              "line": "pending reboot",
+              "text": "Pending reboot. It is true when /run/reboot-required exists, or when a kernel in /boot is newer than the running kernel.",
+              "keys": []
+            }
+          ],
+          "functions": []
+        },
+        {
+          "name": "secrets",
+          "line": "encrypted values in the project",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A secret is a value that the project keeps encrypted and winch never prints."
+            },
+            {
+              "type": "heading",
+              "text": "Format"
+            },
+            {
+              "type": "paragraph",
+              "text": "A secret is encrypted with age for the recipients in winch.yaml. The !secret tag marks it, followed by the ciphertext in base64 on one line."
+            },
+            {
+              "type": "heading",
+              "text": "Where a secret stands"
+            },
+            {
+              "type": "paragraph",
+              "text": "A !secret stands only in a variable value: in the vars of an inventory, and in the defaults of winch.yaml and of recipes, at any depth of a list or a map. --set cannot give a secret."
+            },
+            {
+              "type": "heading",
+              "text": "Commands"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "winch secret init",
+                  "make an age key, add it to recipients"
+                ],
+                [
+                  "winch secret generate vars.<name>",
+                  "write a random password into the inventory"
+                ],
+                [
+                  "winch secret encrypt",
+                  "encrypt a value from stdin"
+                ],
+                [
+                  "winch secret rekey",
+                  "encrypt all secrets for the current recipients"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "The age key"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch secret init makes a key at ~/.config/winch/age.key, or at the path in WINCH_AGE_KEY. It makes a key only when no key is there. With WINCH_AGE_IDENTITY_CMD, it makes no key and adds the public key of the command's key."
+            },
+            {
+              "type": "paragraph",
+              "text": "winch reads the age key from the output of the command in WINCH_AGE_IDENTITY_CMD, such as op read op://infra/winch/key. Without it, winch reads the file in WINCH_AGE_KEY, or else ~/.config/winch/age.key. winch validate needs no age key."
+            },
+            {
+              "type": "heading",
+              "text": "A new member"
+            },
+            {
+              "type": "paragraph",
+              "text": "A new member runs winch secret init and sends the change for review. The new key can read the secrets after a member who can read them runs winch secret rekey."
+            },
+            {
+              "type": "heading",
+              "text": "Output"
+            },
+            {
+              "type": "paragraph",
+              "text": "A variable is secret when its value is a !secret, or when its default reads a secret variable. The plan, diffs, errors, logs, and JSON show (secret) in place of a secret, also a part of a value that comes from a secret. A filter replaces each secret value in all text that winch prints, also in output from the host. The filter also hides private keys, age keys, passwords in URLs, and well-known tokens."
+            },
+            {
+              "type": "heading",
+              "text": "Secrets in commands"
+            },
+            {
+              "type": "paragraph",
+              "text": "A secret in a command does not show in the process list of the host. A program that the command starts with the secret as an argument, such as psql -c, does show it."
+            },
+            {
+              "type": "heading",
+              "text": "Warnings and errors"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "winch warns about text in project files that looks like a private key or a token, and is not a !secret.",
+                "winch warns about a file step whose content reads a secret and whose mode is missing or lets others read it.",
+                "A !secret in a certbot hook is an error: certbot stores its hooks in a file that other users can read. A hook that reads a secret through match() fails the host."
+              ]
+            },
+            {
+              "type": "example",
+              "text": "# inventories/production.yaml\nhosts:\n  db1.acme.com: {}\ngroups:\n  all:\n    vars:\n      db_password: !secret YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB...\n\n# winch.yaml\nname: acme\nrecipients:\n  - age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p\nsteps:\n  - file:\n      path: /etc/app/db.env\n      content: !tpl \"DB_PASSWORD={{ .vars.db_password }}\\n\"\n      mode: \"0600\"\n"
+            }
+          ],
+          "keys": [],
+          "functions": []
+        }
+      ]
+    },
+    {
+      "title": "Running",
+      "topics": [
+        {
+          "name": "workflow",
+          "line": "how to plan and apply changes",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "A run of winch plans the changes, asks for approval, and then applies them."
+            },
+            {
+              "type": "heading",
+              "text": "Plan and apply"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch plan shows the changes and changes nothing. winch apply shows the same plan, asks, and then makes the changes. For each host, the plan connects to the host, reads the facts, evaluates the steps, checks the requirements of the recipes, and checks each step on the host. Apply checks each step again right before it changes it. The second check decides."
+            },
+            {
+              "type": "heading",
+              "text": "Apply output"
+            },
+            {
+              "type": "paragraph",
+              "text": "Apply prints a line for each step that changes or fails, then the summary. A step that checks as ok prints nothing: a planned change that the second check finds made, an assert that passes, and a handler restart that checks as ok. The summary line of plan and of apply counts hosts, not steps."
+            },
+            {
+              "type": "heading",
+              "text": "Plan marks"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "+",
+                  "create"
+                ],
+                [
+                  "~",
+                  "change"
+                ],
+                [
+                  "-",
+                  "remove"
+                ],
+                [
+                  "?",
+                  "unknown: a cmd without creates or unless"
+                ],
+                [
+                  "!",
+                  "a handler, or a pending then, gate, or assert that will run"
+                ],
+                [
+                  "*",
+                  "a reboot, assert, or health gate that runs during apply"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Plan hash"
+            },
+            {
+              "type": "paragraph",
+              "text": "The last line of a plan is its hash, such as plan a3f9c2e1d07b4c58. The hash covers the project name, the hosts with the host name and port that ssh resolves for them and their login users, the stages, the evaluated steps, the check results, and the pending handlers and then commands. winch apply --check <hash> applies only when the new plan has that hash, without the question."
+            },
+            {
+              "type": "heading",
+              "text": "Without a terminal"
+            },
+            {
+              "type": "paragraph",
+              "text": "apply without --yes or --check prints the plan and exits 5. Its last line is the command that applies that plan."
+            },
+            {
+              "type": "heading",
+              "text": "What winch changes"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch changes only what steps declare. Deleting a step changes nothing on the host. To remove a thing, declare it with absent: true. The plan fails a host when two steps manage the same path, package, unit, user, or group with different arguments."
+            },
+            {
+              "type": "heading",
+              "text": "Stopping and resuming"
+            },
+            {
+              "type": "paragraph",
+              "text": "The first Ctrl-C lets the running step of each host finish, starts no new step, and ends with the summary. A second Ctrl-C closes the connections to the hosts. A new run is the resume: steps that already succeeded check as ok, and pending handlers run."
+            },
+            {
+              "type": "heading",
+              "text": "Access to the host"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch keeps its access to each host."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "A step that stops, disables, masks, or removes the SSH server fails: \"this cuts off winch's access\".",
+                "Some steps get the rollback of confirm_access without it: a change of the login user's authorized_keys, ~/.ssh, or home directory, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
+                "A step that changes sshd's config while ssh.socket is active, as on Ubuntu, restarts ssh.socket. It gets the same protection.",
+                "After the last step of a host that changed something, winch checks the access once more. When it fails, the host fails, and nothing rolls back."
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Changing the SSH port"
+            },
+            {
+              "type": "paragraph",
+              "text": "The access check connects to the port in your SSH config. So a change of sshd's Port in one run always rolls back. Move sshd to a new port in three runs:"
+            },
+            {
+              "type": "list",
+              "ordered": true,
+              "items": [
+                "Let sshd listen on the old and the new port.",
+                "Change the port in the SSH config.",
+                "Remove the old port from sshd."
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Exit codes"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "0",
+                  "success"
+                ],
+                [
+                  "1",
+                  "one or more hosts failed"
+                ],
+                [
+                  "2",
+                  "plan --exit-code: apply would change something"
+                ],
+                [
+                  "3",
+                  "invalid command line or project; nothing ran"
+                ],
+                [
+                  "4",
+                  "one or more hosts were unreachable, and no step failed"
+                ],
+                [
+                  "5",
+                  "confirmation needed; nothing changed"
+                ],
+                [
+                  "6",
+                  "the plan hash differs from --check; nothing changed"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "When several apply, the first in the order 3, 1, 4, 6, 5, 2, 0 wins."
+            },
+            {
+              "type": "heading",
+              "text": "JSON output"
+            },
+            {
+              "type": "paragraph",
+              "text": "--json writes one JSON object per line on stdout. Each has type and time. The types:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "version",
+                  "the format version; always first"
+                ],
+                [
+                  "diagnostic",
+                  "an error or a warning, with file, line, col, and message"
+                ],
+                [
+                  "planned",
+                  "the check of one step"
+                ],
+                [
+                  "applied",
+                  "the apply of one step"
+                ],
+                [
+                  "host",
+                  "a host finished, failed, or was unreachable"
+                ],
+                [
+                  "exec",
+                  "the output of winch exec on one host"
+                ],
+                [
+                  "summary",
+                  "the counts, the plan hash, and the exit code; always last"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "A step event has host and address, such as mail.acme.com:nginx#3[0]: the host, the stage or recipe, the step number from 1, and the loop index from 0."
+            },
+            {
+              "type": "example",
+              "text": "winch plan site\nwinch apply site\nwinch apply site --check a3f9c2e1d07b4c58\nwinch plan site --exit-code\n"
+            }
+          ],
+          "keys": [],
+          "functions": []
+        },
+        {
+          "name": "remote",
+          "line": "how winch reaches a host and runs there",
+          "blocks": [
+            {
+              "type": "paragraph",
+              "text": "winch works on a host through one SSH connection, the session, with a helper program at the other end."
+            },
+            {
+              "type": "heading",
+              "text": "What a host needs"
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "Debian 13, Ubuntu 24.04, or Ubuntu 26.04, on amd64 or arm64.",
+                "Login as root, or as a user with passwordless sudo.",
+                "A POSIX login shell that prints nothing on stdout before winch starts a command.",
+                "/var/lib/winch/ on a file system that allows running programs."
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Nothing else needs to be installed. The machine that runs winch is Linux or macOS with the OpenSSH client."
+            },
+            {
+              "type": "heading",
+              "text": "SSH settings"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch runs your ssh, so ~/.ssh/config applies: Port, IdentityFile, ProxyJump, and every other setting. Its Host blocks match the host name of the inventory, also when the host has an address. The address and the user of the inventory override the SSH config. --user overrides both."
+            },
+            {
+              "type": "code",
+              "text": "# ~/.ssh/config\nHost *.acme.com\n  Port 2222\n  IdentityFile ~/.ssh/acme_ed25519\n\n# inventories/production.yaml\nhosts:\n  web1.acme.com:\n    address: 192.0.2.10\n    user: admin\n\n# winch logs in to 192.0.2.10 on port 2222 as admin,\n# with the key ~/.ssh/acme_ed25519.\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch also passes these options. They win over the SSH config:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "ConnectTimeout=15 ServerAliveInterval=15 ServerAliveCountMax=3",
+                  "a host that does not answer fails and does not hang the run"
+                ],
+                [
+                  "ControlMaster=no ControlPath=none",
+                  "a master connection from the SSH config, with its own keepalive, is not used"
+                ],
+                [
+                  "RemoteCommand=none PermitLocalCommand=no ClearAllForwardings=yes ForwardAgent=no ForwardX11=no",
+                  "the SSH config does not replace or add to the command of winch"
+                ]
+              ]
+            },
+            {
+              "type": "heading",
+              "text": "Host keys and passphrases"
+            },
+            {
+              "type": "paragraph",
+              "text": "When stdin and stderr are terminals, ssh can ask for a new host key or a key passphrase. Sessions then start one at a time, in inventory order, so each question belongs to one host. After the start, hosts run in parallel."
+            },
+            {
+              "type": "paragraph",
+              "text": "Without a terminal, or with --batch, winch passes BatchMode=yes and sessions start in parallel. A host that needs a question is then unreachable. Accept the host key and load the key into ssh-agent first:"
+            },
+            {
+              "type": "code",
+              "text": "ssh -o HostName=192.0.2.10 -l admin web1.acme.com\nssh-add ~/.ssh/acme_ed25519\nwinch apply site --batch\n\n# ssh asks no questions; the apply question stays.\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "The access checks and the connections after a reboot always use BatchMode=yes, so they cannot ask for anything. Run winch doc workflow for the access checks. At a terminal, a session therefore logs in with BatchMode=yes first. When the host refuses that login, or its host key is new, winch logs in again, and ssh can ask. A host that refused the first login plans as usual, but apply stops before its first change and names ssh-add. After a new host key, apply runs one access check before the first change."
+            },
+            {
+              "type": "heading",
+              "text": "When a connection fails"
+            },
+            {
+              "type": "paragraph",
+              "text": "A host is unreachable when ssh fails before the session starts: the name does not resolve, the connection is refused or takes more than 15 seconds, or the host key or the login fails. winch then exits 4 when no step failed. For an unknown host key, the error names the ssh command to run once. For a refused login, it names ssh-add."
+            },
+            {
+              "type": "paragraph",
+              "text": "Only one winch run works on a host at a time. When another run holds the host, the error names that run and the process ID of its helper. When that run is gone, end the process."
+            },
+            {
+              "type": "heading",
+              "text": "The session"
+            },
+            {
+              "type": "paragraph",
+              "text": "A session is one ssh process with the helper at the other end. All work on a host goes through it. It opens at the first work of the host and stays open across stages and through the question. The host lock stays held while the question waits; Ctrl-C releases it. A session closes when its host has no more work. The access checks open their own connections."
+            },
+            {
+              "type": "paragraph",
+              "text": "winch keeps the helper in /var/lib/winch/bin/ and sends it when it is missing. The helper exits when the session ends and leaves no process, except a confirm_access timer until it ends."
+            },
+            {
+              "type": "paragraph",
+              "text": "The helpers for amd64 and arm64 are inside the winch binary. A winch built with go install has none: plan, apply, run, and exec fail before they contact a host. Install a release."
+            },
+            {
+              "type": "heading",
+              "text": "How commands run"
+            },
+            {
+              "type": "paragraph",
+              "text": "Every command on the host, also one that a module runs, such as apt-get or systemctl, runs as root in /, with only this environment:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "LC_ALL",
+                  "C.UTF-8"
+                ],
+                [
+                  "PATH",
+                  "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                ],
+                [
+                  "HOME",
+                  "/root"
+                ],
+                [
+                  "USER",
+                  "root"
+                ],
+                [
+                  "LOGNAME",
+                  "root"
+                ],
+                [
+                  "umask",
+                  "022"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Nothing comes from the login session, such as the TMPDIR that libpam-tmpdir sets."
+            },
+            {
+              "type": "paragraph",
+              "text": "The commands of cmd, assert, unless, validate, then, health, and the certbot hooks run through sh -e, with stdin from /dev/null. A command of several lines stops at its first failed line."
+            },
+            {
+              "type": "paragraph",
+              "text": "A cmd with dir runs in that directory. A cmd with user runs as that user, with the home of that user as HOME, and its name as USER and LOGNAME. It starts no login session: PAM does not run, so the login umask and limits of the user do not apply."
+            },
+            {
+              "type": "heading",
+              "text": "The time limit"
+            },
+            {
+              "type": "paragraph",
+              "text": "A command stops after 10 minutes, or after the timeout of a cmd step in seconds. The helper sends SIGTERM to the command and its child processes, and SIGKILL 10 seconds later to those that still run. The step fails, and the error shows the last 10 lines of output. apt-get in pkg, repo, and upgrade has no time limit."
+            },
+            {
+              "type": "paragraph",
+              "text": "When the connection to winch ends, the helper lets the running command finish within its limit, and then exits. A package install is not cut off in the middle. winch exec is different: on Ctrl-C, or when its session breaks, its command gets SIGINT, and SIGKILL after 10 seconds."
+            },
+            {
+              "type": "heading",
+              "text": "What winch leaves on the host"
+            },
+            {
+              "type": "paragraph",
+              "text": "winch keeps its files in /var/lib/winch/:"
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "bin/",
+                  "the helper"
+                ],
+                [
+                  "handlers/<project>",
+                  "pending handlers"
+                ],
+                [
+                  "then/<project>",
+                  "pending then commands"
+                ],
+                [
+                  "checks/<project>",
+                  "pending health gates and asserts"
+                ],
+                [
+                  "certbot-hooks/<project>",
+                  "pending certbot hooks"
+                ],
+                [
+                  "downloads/<project>",
+                  "checksum, owner, and group of each unpack"
+                ],
+                [
+                  "firewall.list",
+                  "the firewall table after its last load"
+                ],
+                [
+                  "rollback/<project>/",
+                  "old files for confirm_access, during a run"
+                ],
+                [
+                  "reboot",
+                  "the boot ID and the error of a failed reboot, until the next boot"
+                ],
+                [
+                  "lock",
+                  "the session lock"
+                ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "To remove winch from a host, delete /var/lib/winch/. Pending handlers, then commands, health gates, asserts, and certbot hooks are then lost. The next run of winch starts from the state of the host."
+            }
+          ],
+          "keys": [],
+          "functions": []
+        }
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "assert",
+      "line": "stop a host when a check command fails",
+      "body": "The plan marks the step with * and runs nothing. Apply runs the command. A failed assert stays pending on the host, and the next apply runs it again, also when nothing else changes.",
+      "keys": [
+        {
+          "name": "command",
+          "path": "assert.command",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "check command",
+          "text": "Check command. It runs during apply, through sh -e as root, in /. Exit 0 passes.",
+          "keys": []
+        },
+        {
+          "name": "message",
+          "path": "assert.message",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "error when the check fails",
+          "text": "Error when the check fails. The host fails with it when the command exits non-zero.",
+          "keys": []
+        }
+      ],
+      "example": "- name: Check that nginx answers\n  assert:\n    command: curl -fsS http://localhost/\n    message: nginx does not answer on port 80\n"
+    },
+    {
+      "name": "certbot",
+      "line": "get a Let's Encrypt certificate",
+      "body": "The step runs certbot certonly. Renewal stays with certbot's own timer. Install the package certbot in an earlier pkg step. The nginx and apache authenticators also need python3-certbot-nginx or python3-certbot-apache.",
+      "keys": [
+        {
+          "name": "name",
+          "path": "certbot.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "certificate name in /etc/letsencrypt",
+          "text": "Certificate name in /etc/letsencrypt.",
+          "keys": []
+        },
+        {
+          "name": "domains",
+          "path": "certbot.domains",
+          "type": "string or list of strings",
+          "default": "",
+          "required": true,
+          "line": "no wildcards",
+          "text": "No wildcards. A wildcard needs a DNS challenge.",
+          "keys": []
+        },
+        {
+          "name": "email",
+          "path": "certbot.email",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "Let's Encrypt account address",
+          "text": "Let's Encrypt account address.",
+          "keys": []
+        },
+        {
+          "name": "authenticator",
+          "path": "certbot.authenticator",
+          "type": "string",
+          "default": "nginx",
+          "required": false,
+          "line": "challenge plugin",
+          "text": "Challenge plugin: nginx, apache, standalone, or webroot. The nginx and apache plugins do not change the config of the web server. standalone binds port 80 itself; pre_hook and post_hook can stop and start what holds that port. webroot needs webroot_path.",
+          "keys": []
+        },
+        {
+          "name": "webroot_path",
+          "path": "certbot.webroot_path",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "web root for webroot",
+          "text": "Web root for webroot.",
+          "keys": []
+        },
+        {
+          "name": "pre_hook",
+          "path": "certbot.pre_hook",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "command before each try",
+          "text": "Command before each try to get a certificate. certbot stores it in a file that other users can read, so it cannot hold a secret. A hook that needs a secret reads it from a root-only file that a file step writes.",
+          "keys": []
+        },
+        {
+          "name": "post_hook",
+          "path": "certbot.post_hook",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "command after each try",
+          "text": "Command after each try to get a certificate. certbot stores it in a file that other users can read, so it cannot hold a secret.",
+          "keys": []
+        },
+        {
+          "name": "deploy_hook",
+          "path": "certbot.deploy_hook",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "command after each new certificate",
+          "text": "Command after each new certificate, also the first. A failed hook fails the step, and the next apply runs it again. It cannot hold a secret.",
+          "keys": []
+        },
+        {
+          "name": "reuse_key",
+          "path": "certbot.reuse_key",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "keep the private key at renewal",
+          "text": "Keep the private key at renewal.",
+          "keys": []
+        }
+      ],
+      "example": "- certbot:\n    name: mail\n    domains: [mail.example.com]\n    email: admin@example.com\n    deploy_hook: systemctl reload postfix\n"
+    },
+    {
+      "name": "cmd",
+      "line": "run a command",
+      "body": "Without creates or unless, the check result is unknown, and apply runs the command each time. A secret in the command does not show in the process list of the host. A program that the command starts with the secret as an argument, such as psql -c, does show it.",
+      "keys": [
+        {
+          "name": "command",
+          "path": "cmd.command",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "shell script",
+          "text": "Shell script. It runs through sh -e as root, in /, with stdin from /dev/null. A script of several lines stops at its first failed line. Without creates or unless, the check result is unknown.",
+          "keys": []
+        },
+        {
+          "name": "creates",
+          "path": "cmd.creates",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "path that marks the work as done",
+          "text": "Path that marks the work as done. The step is ok when the path exists. When the command exits 0 and the path is still missing, the step fails. The path has no glob characters. A step has at most one of creates and unless.",
+          "keys": []
+        },
+        {
+          "name": "unless",
+          "path": "cmd.unless",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "check command; exit 0 skips the step",
+          "text": "Check command; exit 0 skips the step. It runs at the check as root, in /, with the timeout of the step. user and dir do not apply to it. A step has at most one of creates and unless.",
+          "keys": []
+        },
+        {
+          "name": "user",
+          "path": "cmd.user",
+          "type": "string",
+          "default": "root",
+          "required": false,
+          "line": "account that runs command",
+          "text": "Account that runs command. Its home is HOME. The step starts no login session: PAM does not run, so the login umask and limits of the account do not apply, and the umask is 022.",
+          "keys": []
+        },
+        {
+          "name": "dir",
+          "path": "cmd.dir",
+          "type": "string",
+          "default": "/",
+          "required": false,
+          "line": "working directory",
+          "text": "Working directory.",
+          "keys": []
+        },
+        {
+          "name": "timeout",
+          "path": "cmd.timeout",
+          "type": "integer",
+          "default": "600",
+          "required": false,
+          "line": "limit in seconds, also for unless",
+          "text": "Limit in seconds, also for unless. After it, winch stops the command and the step fails.",
+          "keys": []
+        }
+      ],
+      "example": "- name: Build the alias database\n  cmd:\n    command: newaliases\n    creates: /etc/aliases.db\n"
+    },
+    {
+      "name": "debconf",
+      "line": "set a debconf answer",
+      "body": "Only the scripts of a package read its answers. Put the step before the pkg step that installs the package, also when the package comes in as a dependency.",
+      "keys": [
+        {
+          "name": "package",
+          "path": "debconf.package",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "package that asks the question",
+          "text": "Package that asks the question.",
+          "keys": []
+        },
+        {
+          "name": "question",
+          "path": "debconf.question",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "name, such as postfix/main_mailer_type",
+          "text": "Name, such as postfix/main_mailer_type.",
+          "keys": []
+        },
+        {
+          "name": "type",
+          "path": "debconf.type",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "question type, such as string, boolean, or select",
+          "text": "Question type, such as string, boolean, or select.",
+          "keys": []
+        },
+        {
+          "name": "value",
+          "path": "debconf.value",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "answer, as text",
+          "text": "Answer, as text. Only the scripts of the package read it, so put the step before the pkg step that installs the package.",
+          "keys": []
+        }
+      ],
+      "example": "- debconf:\n    package: postfix\n    question: postfix/main_mailer_type\n    type: select\n    value: Internet Site\n"
+    },
+    {
+      "name": "dir",
+      "line": "manage a directory",
+      "body": "The step creates missing parent directories, owned by root with mode 0755. winch checks owner, group, and mode on every run.",
+      "keys": [
+        {
+          "name": "path",
+          "path": "dir.path",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "absolute",
+          "text": "Absolute. The step creates missing parent directories, owned by root with mode 0755. It follows a symbolic link to a directory and manages the directory behind it.",
+          "keys": []
+        },
+        {
+          "name": "owner",
+          "path": "dir.owner",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "",
+          "text": "A user name, or a numeric ID that needs no account. A value of only digits is an ID, also in quotes.",
+          "keys": []
+        },
+        {
+          "name": "group",
+          "path": "dir.group",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "",
+          "text": "A group name, or a numeric ID that needs no group. A value of only digits is an ID, also in quotes.",
+          "keys": []
+        },
+        {
+          "name": "mode",
+          "path": "dir.mode",
+          "type": "string",
+          "default": "0755",
+          "required": false,
+          "line": "octal, in quotes",
+          "text": "Octal, in quotes: \"0750\". Without quotes, YAML reads it as a number.",
+          "keys": []
+        },
+        {
+          "name": "recurse",
+          "path": "dir.recurse",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "owner and group for the whole tree",
+          "text": "Owner and group for the whole tree. The mode stays the mode of the directory alone.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "dir.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove it with its content",
+          "text": "Remove it with its content.",
+          "keys": []
+        },
+        {
+          "name": "replace",
+          "path": "dir.replace",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove another kind of thing at path first",
+          "text": "Remove another kind of thing at path first, such as a file or a link. Without it, such a thing fails the check.",
+          "keys": []
+        },
+        {
+          "name": "purge",
+          "path": "dir.purge",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove entries that nothing declares",
+          "text": "Remove entries that nothing declares. Purge looks only at the direct entries. It keeps an entry that a package owns, or that a step for the host writes. Each removal is a change.",
+          "keys": []
+        },
+        {
+          "name": "keep",
+          "path": "dir.keep",
+          "type": "list of strings",
+          "default": "",
+          "required": false,
+          "line": "name patterns that purge keeps",
+          "text": "Name patterns that purge keeps, such as *.db. They are glob patterns. keep needs purge.",
+          "keys": []
+        }
+      ],
+      "example": "- dir:\n    path: /var/www/app\n    owner: www-data\n    group: www-data\n    mode: \"0750\"\n"
+    },
+    {
+      "name": "download",
+      "line": "download a file or an archive",
+      "body": "The host fetches the file and checks its SHA-256. A download with another checksum fails and keeps the old file. A step has path or unpack.",
+      "keys": [
+        {
+          "name": "url",
+          "path": "download.url",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "fetched by the host",
+          "text": "Fetched by the host.",
+          "keys": []
+        },
+        {
+          "name": "sha256",
+          "path": "download.sha256",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "checksum of the file",
+          "text": "Checksum of the file. Take the value from the checksum file that the vendor publishes, or download the file once and run sha256sum on it. A download with another checksum fails and keeps the old file.",
+          "keys": []
+        },
+        {
+          "name": "path",
+          "path": "download.path",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "absolute target of a single file",
+          "text": "Absolute target of a single file. A step has path or unpack.",
+          "keys": []
+        },
+        {
+          "name": "unpack",
+          "path": "download.unpack",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "directory for the unpacked archive",
+          "text": "Directory for the unpacked archive. The path of the URL ends in .tar.gz, .tgz, .tar.xz, or .zip. The directory holds the entries of the archive as they are: a top directory of the archive stays, as in <unpack>/app-1.2/bin. The step unpacks again when sha256, owner, group, or the directory changes. Each unpack replaces the whole tree, also the first: it removes the files that are already in the directory. Keep the files that a program writes, such as its config, data, and logs, outside the directory.",
+          "keys": []
+        },
+        {
+          "name": "owner",
+          "path": "download.owner",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "of the file or the unpacked tree",
+          "text": "Of the file or the unpacked tree. A user name or a numeric ID.",
+          "keys": []
+        },
+        {
+          "name": "group",
+          "path": "download.group",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "of the file or the unpacked tree",
+          "text": "Of the file or the unpacked tree. A group name or a numeric ID.",
+          "keys": []
+        },
+        {
+          "name": "mode",
+          "path": "download.mode",
+          "type": "string",
+          "default": "0644",
+          "required": false,
+          "line": "octal, in quotes; path only",
+          "text": "Octal, in quotes; path only. Without quotes, YAML reads it as a number. With unpack, mode is an error: the entries keep the modes of the archive, without write permission for group and others.",
+          "keys": []
+        }
+      ],
+      "example": "- download:\n    url: https://example.com/releases/app-1.4.2-linux-amd64\n    sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n    path: /usr/local/bin/app\n    mode: \"0755\"\n"
+    },
+    {
+      "name": "file",
+      "line": "manage a file",
+      "body": "At most one of content, template, source, copy_from, and stock sets the content. A step without any of them manages only the owner, group, and mode that it gives, of a file that exists. The step creates missing parent directories, owned by root with mode 0755.",
+      "keys": [
+        {
+          "name": "path",
+          "path": "file.path",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "absolute",
+          "text": "Absolute. The step creates missing parent directories, owned by root with mode 0755.",
+          "keys": []
+        },
+        {
+          "name": "content",
+          "path": "file.content",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "literal text",
+          "text": "Literal text. A step without content, template, source, copy_from, or stock sets only the owner, group, and mode that it gives, with no defaults, of a file that exists. When that file is missing, the plan says does not exist yet. Apply fails when it is still missing.",
+          "keys": []
+        },
+        {
+          "name": "template",
+          "path": "file.template",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "file in the recipe's templates/",
+          "text": "File in the recipe's templates/ directory. Its output is the content.",
+          "keys": []
+        },
+        {
+          "name": "source",
+          "path": "file.source",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "file in the recipe's files/",
+          "text": "File in the recipe's files/ directory. Its bytes are the content.",
+          "keys": []
+        },
+        {
+          "name": "copy_from",
+          "path": "file.copy_from",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "file on the host",
+          "text": "File on the host. Its bytes are the content, and its permission bits are the default mode. The default owner and group stay root: the owner of the source does not carry over.",
+          "keys": []
+        },
+        {
+          "name": "stock",
+          "path": "file.stock",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "content that the package ships",
+          "text": "Content that the package ships for path, from the installed version. The package also gives the default owner, group, and mode.",
+          "keys": []
+        },
+        {
+          "name": "owner",
+          "path": "file.owner",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "",
+          "text": "A user name or a numeric ID. A step without content has no default.",
+          "keys": []
+        },
+        {
+          "name": "group",
+          "path": "file.group",
+          "type": "name or ID",
+          "default": "root",
+          "required": false,
+          "line": "",
+          "text": "A group name or a numeric ID. A step without content has no default.",
+          "keys": []
+        },
+        {
+          "name": "mode",
+          "path": "file.mode",
+          "type": "string",
+          "default": "0644",
+          "required": false,
+          "line": "octal, in quotes",
+          "text": "Octal, in quotes: \"0640\". Without quotes, YAML reads it as a number. With stock, the package gives the default. With copy_from, the source gives it. A step without content has no default.",
+          "keys": []
+        },
+        {
+          "name": "validate",
+          "path": "file.validate",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "check command for the new file",
+          "text": "Check command for the new file. The command names the real path, or checks the whole config: nginx -t. winch puts the new file in place and runs the command. When the command fails, the old file comes back and the step fails.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "file.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "",
+          "text": "Remove the file. A path of another kind fails the check.",
+          "keys": []
+        },
+        {
+          "name": "replace",
+          "path": "file.replace",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove another kind of thing at path first",
+          "text": "Remove another kind of thing at path first, such as a directory. Without it, such a thing fails the check.",
+          "keys": []
+        }
+      ],
+      "example": "- name: Write the message of the day\n  file:\n    path: /etc/motd\n    content: \"Welcome to mail.example.com.\\n\"\n    mode: \"0644\"\n"
+    },
+    {
+      "name": "firewall",
+      "line": "filter incoming traffic",
+      "body": "The step owns the nftables table inet winch and changes no other table. The rules of Docker, fail2ban, or /etc/nftables.conf stay. Its input chain filters traffic to the host. A host has at most one firewall step in a run.\n\nThe step needs nft: install the package nftables in an earlier pkg step.\n\nEvery change gets the SSH check and the rollback of confirm_access. When no new SSH connection works after the new rules load, the old rules come back.",
+      "keys": [
+        {
+          "name": "allow",
+          "path": "firewall.allow",
+          "type": "list of maps",
+          "default": "",
+          "required": false,
+          "line": "accepted traffic; the host drops the rest",
+          "text": "Accepted traffic; the host drops the rest. It always accepts established and related traffic, loopback, ICMP echo requests, the ICMPv6 types that IPv6 needs, and DHCP replies. It drops invalid packets.",
+          "keys": [
+            {
+              "name": "tcp",
+              "path": "firewall.allow.tcp",
+              "type": "integer or list of integers",
+              "default": "",
+              "required": false,
+              "line": "ports",
+              "text": "Ports. A rule has tcp or udp.",
+              "keys": []
+            },
+            {
+              "name": "udp",
+              "path": "firewall.allow.udp",
+              "type": "integer or list of integers",
+              "default": "",
+              "required": false,
+              "line": "ports",
+              "text": "Ports. A rule has tcp or udp.",
+              "keys": []
+            },
+            {
+              "name": "from",
+              "path": "firewall.allow.from",
+              "type": "string or list of strings",
+              "default": "",
+              "required": false,
+              "line": "source addresses or networks",
+              "text": "Source addresses or networks. IPv4 and IPv6 are allowed. Without from, the rule accepts every source.",
+              "keys": []
+            }
+          ]
+        },
+        {
+          "name": "absent",
+          "path": "firewall.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove the table, its file, and its unit",
+          "text": "Remove the table, its file, and its unit.",
+          "keys": []
+        }
+      ],
+      "example": "- firewall:\n    allow:\n      - tcp: [22, 80, 443]\n      - udp: 51820\n      - tcp: 5432\n        from: [10.0.0.0/8, 2001:db8::/32]\n"
+    },
+    {
+      "name": "group",
+      "line": "manage a group",
+      "body": "",
+      "keys": [
+        {
+          "name": "name",
+          "path": "group.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "",
+          "text": "A new group's name has lowercase letters, digits, _, and -, and does not start with a digit or -. It has at most 32 characters.",
+          "keys": []
+        },
+        {
+          "name": "gid",
+          "path": "group.gid",
+          "type": "ID",
+          "default": "",
+          "required": false,
+          "line": "",
+          "text": "A whole number. A gid that another group has fails the check.",
+          "keys": []
+        },
+        {
+          "name": "system",
+          "path": "group.system",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "system group, at creation only",
+          "text": "System group, at creation only. It counts only when the step creates the group.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "group.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "",
+          "text": "Remove the group. The check fails when the group is the primary group of a user.",
+          "keys": []
+        }
+      ],
+      "example": "- group:\n    name: deploy\n    system: true\n"
+    },
+    {
+      "name": "hostname",
+      "line": "set the host name",
+      "body": "",
+      "keys": [
+        {
+          "name": "name",
+          "path": "hostname.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "short name, such as mail",
+          "text": "Short name, such as mail.",
+          "keys": []
+        }
+      ],
+      "example": "- hostname:\n    name: mail\n"
+    },
+    {
+      "name": "line",
+      "line": "manage one line in a file",
+      "body": "",
+      "keys": [
+        {
+          "name": "path",
+          "path": "line.path",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "absolute",
+          "text": "Absolute. A missing file is a change in the plan, since an earlier step can create it. Apply fails when it is still missing.",
+          "keys": []
+        },
+        {
+          "name": "line",
+          "path": "line.line",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "line to keep",
+          "text": "Line to keep. It replaces the one line that match finds, or goes at the end of the file.",
+          "keys": []
+        },
+        {
+          "name": "match",
+          "path": "line.match",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "regular expression for the line",
+          "text": "Regular expression for the line. More than one matching line fails the check.",
+          "keys": []
+        },
+        {
+          "name": "validate",
+          "path": "line.validate",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "check command, as for file",
+          "text": "Check command, as for file. It runs with absent too.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "line.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove the matching lines",
+          "text": "Remove the matching lines.",
+          "keys": []
+        }
+      ],
+      "example": "- line:\n    path: /etc/default/grub\n    match: ^GRUB_TIMEOUT=\n    line: GRUB_TIMEOUT=2\n  then: update-grub\n"
+    },
+    {
+      "name": "link",
+      "line": "manage a symbolic link",
+      "body": "The step creates missing parent directories, owned by root with mode 0755.",
+      "keys": [
+        {
+          "name": "path",
+          "path": "link.path",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "absolute",
+          "text": "Absolute. The step creates missing parent directories, owned by root with mode 0755.",
+          "keys": []
+        },
+        {
+          "name": "target",
+          "path": "link.target",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "relative or absolute; need not exist",
+          "text": "Relative or absolute; need not exist.",
+          "keys": []
+        },
+        {
+          "name": "validate",
+          "path": "link.validate",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "check command, as for file",
+          "text": "Check command, as for file.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "link.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "",
+          "text": "Remove the link. A path of another kind fails the check.",
+          "keys": []
+        },
+        {
+          "name": "replace",
+          "path": "link.replace",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove another kind of thing at path first",
+          "text": "Remove another kind of thing at path first, such as a file or a directory. Without it, such a thing fails the check.",
+          "keys": []
+        }
+      ],
+      "example": "- link:\n    path: /etc/nginx/sites-enabled/app\n    target: /etc/nginx/sites-available/app\n"
+    },
+    {
+      "name": "pkg",
+      "line": "install or remove packages",
+      "body": "Before the first install of a run on a host, apply refreshes the package index. After a repo step changed something, the next pkg step refreshes it again.",
+      "keys": [
+        {
+          "name": "name",
+          "path": "pkg.name",
+          "type": "string or list of strings",
+          "default": "",
+          "required": true,
+          "line": "installed in one apt call",
+          "text": "Installed in one apt call.",
+          "keys": []
+        },
+        {
+          "name": "recommends",
+          "path": "pkg.recommends",
+          "type": "boolean",
+          "default": "true",
+          "required": false,
+          "line": "install recommended packages too",
+          "text": "Install recommended packages too.",
+          "keys": []
+        },
+        {
+          "name": "purge",
+          "path": "pkg.purge",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove the config files too",
+          "text": "Remove the config files too. purge needs absent.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "pkg.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "",
+          "text": "Remove the packages.",
+          "keys": []
+        }
+      ],
+      "example": "- pkg:\n    name: [nginx, certbot]\n    recommends: false\n"
+    },
+    {
+      "name": "reboot",
+      "line": "reboot the host",
+      "body": "",
+      "keys": [
+        {
+          "name": "if_required",
+          "path": "reboot.if_required",
+          "type": "boolean",
+          "default": "",
+          "required": true,
+          "line": "only on a pending reboot",
+          "text": "Only on a pending reboot. With false, the step always reboots.",
+          "keys": []
+        },
+        {
+          "name": "timeout",
+          "path": "reboot.timeout",
+          "type": "integer",
+          "default": "600",
+          "required": false,
+          "line": "wait limit in seconds",
+          "text": "Wait limit in seconds.",
+          "keys": []
+        }
+      ],
+      "example": "- reboot:\n    if_required: true\n"
+    },
+    {
+      "name": "repo",
+      "line": "manage an apt source",
+      "body": "",
+      "keys": [
+        {
+          "name": "name",
+          "path": "repo.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "file name in /etc/apt",
+          "text": "File name in /etc/apt, of the source file and of the key file.",
+          "keys": []
+        },
+        {
+          "name": "url",
+          "path": "repo.url",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "without a user or a password",
+          "text": "Without a user or a password.",
+          "keys": []
+        },
+        {
+          "name": "suite",
+          "path": "repo.suite",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "such as trixie",
+          "text": "Such as trixie. A flat suite ends in /.",
+          "keys": []
+        },
+        {
+          "name": "components",
+          "path": "repo.components",
+          "type": "string or list of strings",
+          "default": "",
+          "required": false,
+          "line": "such as main",
+          "text": "Such as main. They are required, except for a flat suite, which has none.",
+          "keys": []
+        },
+        {
+          "name": "key",
+          "path": "repo.key",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "key file in the recipe's files/",
+          "text": "Key file in the recipe's files/ directory: an ASCII-armored OpenPGP public key. Download the vendor's key once and keep it in the project. A step has at most one of key and key_content.",
+          "keys": []
+        },
+        {
+          "name": "key_content",
+          "path": "repo.key_content",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "key text, in place of key",
+          "text": "Key text, in place of key: an ASCII-armored OpenPGP public key. A step has at most one of key and key_content.",
+          "keys": []
+        }
+      ],
+      "example": "- repo:\n    name: nginx\n    url: https://nginx.org/packages/debian\n    suite: trixie\n    components: [nginx]\n    key: key.asc\n"
+    },
+    {
+      "name": "service",
+      "line": "control a systemd unit",
+      "body": "With running: false, a missing unit file is ok, with the note <unit>: unit file not found. A service step with confirm_access: true checks that a new SSH connection works after the step, and rolls back when none does. Run winch doc step.confirm_access. In a handler, restarted and reloaded check as ok when a service step of the run started the unit after the handler's last notify, no earlier step of the handler changed anything, and the step has no confirm_access.",
+      "keys": [
+        {
+          "name": "name",
+          "path": "service.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "unit, with or without .service",
+          "text": "Unit, with or without .service, such as nginx or certbot.timer.",
+          "keys": []
+        },
+        {
+          "name": "running",
+          "path": "service.running",
+          "type": "boolean",
+          "default": "",
+          "required": false,
+          "line": "start or stop; unset leaves it",
+          "text": "Start or stop; unset leaves it. Without running, the step does not start or stop the unit.",
+          "keys": []
+        },
+        {
+          "name": "enabled",
+          "path": "service.enabled",
+          "type": "boolean",
+          "default": "",
+          "required": false,
+          "line": "start at boot; unset leaves it",
+          "text": "Start at boot; unset leaves it. Without enabled, the step does not change it.",
+          "keys": []
+        },
+        {
+          "name": "reloaded",
+          "path": "service.reloaded",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "reload, in handlers and winch run only",
+          "text": "Reload, in handlers and winch run only. A unit that cannot reload restarts.",
+          "keys": []
+        },
+        {
+          "name": "restarted",
+          "path": "service.restarted",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "restart, in handlers and winch run only",
+          "text": "Restart, in handlers and winch run only. A stopped unit stays stopped.",
+          "keys": []
+        }
+      ],
+      "example": "- service:\n    name: nginx\n    running: true\n    enabled: true\n"
+    },
+    {
+      "name": "timezone",
+      "line": "set the time zone",
+      "body": "",
+      "keys": [
+        {
+          "name": "name",
+          "path": "timezone.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "zone name, such as Europe/Berlin",
+          "text": "Zone name, such as Europe/Berlin.",
+          "keys": []
+        }
+      ],
+      "example": "- timezone:\n    name: Europe/Berlin\n"
+    },
+    {
+      "name": "unit",
+      "line": "manage a systemd unit file",
+      "body": "A change of the file, also of its owner or mode, runs systemctl daemon-reload. daemon-reload does not restart a running unit. A handler with restarted: true does.",
+      "keys": [
+        {
+          "name": "name",
+          "path": "unit.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "file name with its type",
+          "text": "File name with its type, such as app.service or app@.service.",
+          "keys": []
+        },
+        {
+          "name": "source",
+          "path": "unit.source",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "file in the recipe's files/",
+          "text": "File in the recipe's files/ directory. A step has source or content.",
+          "keys": []
+        },
+        {
+          "name": "content",
+          "path": "unit.content",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "unit file text",
+          "text": "Unit file text. A step has source or content.",
+          "keys": []
+        }
+      ],
+      "example": "- unit:\n    name: app.service\n    content: |\n      [Unit]\n      Description=App\n\n      [Service]\n      ExecStart=/usr/local/bin/app\n\n      [Install]\n      WantedBy=multi-user.target\n"
+    },
+    {
+      "name": "upgrade",
+      "line": "upgrade the installed packages",
+      "body": "The step refreshes the package index, also during the plan, and checks for pending upgrades.",
+      "keys": [
+        {
+          "name": "mode",
+          "path": "upgrade.mode",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "safe or full",
+          "text": "Safe or full. safe installs the upgrades that remove no package. full also installs the upgrades that add or remove packages.",
+          "keys": []
+        }
+      ],
+      "example": "- upgrade:\n    mode: safe\n"
+    },
+    {
+      "name": "user",
+      "line": "manage a user account",
+      "body": "A step that creates a user also creates its home directory. Without group, it also creates a group with the name of the user. The defaults and system count only when the step creates the user.",
+      "keys": [
+        {
+          "name": "name",
+          "path": "user.name",
+          "type": "string",
+          "default": "",
+          "required": true,
+          "line": "",
+          "text": "A new user's name has lowercase letters, digits, _, and -, and does not start with a digit or -. It has at most 32 characters.",
+          "keys": []
+        },
+        {
+          "name": "uid",
+          "path": "user.uid",
+          "type": "ID",
+          "default": "",
+          "required": false,
+          "line": "",
+          "text": "A whole number. A uid that another user has fails the check.",
+          "keys": []
+        },
+        {
+          "name": "group",
+          "path": "user.group",
+          "type": "name or ID",
+          "default": "<name>",
+          "required": false,
+          "line": "primary group",
+          "text": "Primary group. Without group, a step that creates the user also creates a group with the name of the user.",
+          "keys": []
+        },
+        {
+          "name": "system",
+          "path": "user.system",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "system user, at creation only",
+          "text": "System user, at creation only. Its home is /nonexistent and its shell is /usr/sbin/nologin. It counts only when the step creates the user.",
+          "keys": []
+        },
+        {
+          "name": "home",
+          "path": "user.home",
+          "type": "string",
+          "default": "/home/<name>",
+          "required": false,
+          "line": "created when missing; never moved",
+          "text": "Created when missing; never moved. The step creates a missing home directory, except /nonexistent. The default counts only when the step creates the user. A system user gets /nonexistent. A changed home is not moved.",
+          "keys": []
+        },
+        {
+          "name": "shell",
+          "path": "user.shell",
+          "type": "string",
+          "default": "/bin/sh",
+          "required": false,
+          "line": "login shell",
+          "text": "Login shell. The default counts only when the step creates the user. A system user gets /usr/sbin/nologin.",
+          "keys": []
+        },
+        {
+          "name": "groups",
+          "path": "user.groups",
+          "type": "list of strings",
+          "default": "",
+          "required": false,
+          "line": "exact supplementary groups",
+          "text": "Exact supplementary groups. A step has groups or add_groups.",
+          "keys": []
+        },
+        {
+          "name": "add_groups",
+          "path": "user.add_groups",
+          "type": "list of strings",
+          "default": "",
+          "required": false,
+          "line": "groups to join, keeping the others",
+          "text": "Groups to join, keeping the others. A step with only name and add_groups does not create the user: apply fails when the user does not exist.",
+          "keys": []
+        },
+        {
+          "name": "password",
+          "path": "user.password",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "crypt hash, usually a !secret",
+          "text": "Crypt hash, usually a !secret, such as one from mkpasswd -m yescrypt. ! or * alone locks the password. Without password, the password of a new user is locked.",
+          "keys": []
+        },
+        {
+          "name": "comment",
+          "path": "user.comment",
+          "type": "string",
+          "default": "",
+          "required": false,
+          "line": "full name or description",
+          "text": "Full name or description.",
+          "keys": []
+        },
+        {
+          "name": "authorized_keys",
+          "path": "user.authorized_keys",
+          "type": "list of strings",
+          "default": "",
+          "required": false,
+          "line": "exact SSH keys of the user",
+          "text": "Exact SSH keys of the user, in ~/.ssh/authorized_keys.",
+          "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "user.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove the user; the home stays",
+          "text": "Remove the user; the home stays.",
+          "keys": []
+        }
+      ],
+      "example": "- user:\n    name: deploy\n    groups: [www-data]\n    shell: /bin/bash\n    authorized_keys:\n      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGlrZDl2Q3h5c3d6bW9ja2tleWZvcmRvY3MxMjM0 deploy@laptop\n"
+    }
+  ],
+  "commands": [
+    {
+      "name": "",
+      "summary": "Winch is a server configuration tool. It describes the desired state of your servers in declarative YAML and provides commands to manage that state.",
+      "usage": [
+        "winch <command> [arguments] [flags]"
+      ],
+      "description": [],
+      "examples": [
+        {
+          "comment": "check the project without contacting a host",
+          "command": "winch validate"
+        },
+        {
+          "comment": "show the changes of the pipeline site on the test inventory",
+          "command": "winch plan site --inventory test"
+        },
+        {
+          "comment": "make those changes after a question",
+          "command": "winch apply site --inventory test"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--version",
+          "value": "",
+          "default": "",
+          "text": "version and platform, as winch version"
+        }
+      ],
+      "see": [
+        "winch doc"
+      ]
+    },
+    {
+      "name": "validate",
+      "summary": "check the project without contacting a host",
+      "usage": [
+        "winch validate [flags]"
+      ],
+      "description": [
+        "Validate loads the project and checks it. It connects to no host.",
+        "It checks the schemas, the names, the module arguments, the variable reads and values, the expressions, and the templates.",
+        "It loads the inventory of --inventory, or of inventory in winch.yaml. Without both, it checks every inventory.",
+        "It does not decrypt secrets and needs no age key. It checks that each !secret is an age file. It warns about a secret whose number of recipients differs from the recipients list, and names winch secret rekey.",
+        "A --set value parses as YAML. Quote a value that YAML would change: --set 'vars.php_version=\"8.0\"'."
+      ],
+      "examples": [
+        {
+          "comment": "check the project",
+          "command": "winch validate"
+        },
+        {
+          "comment": "check the project with the inventory production",
+          "command": "winch validate --inventory production"
+        },
+        {
+          "comment": "check the project with a value for one variable",
+          "command": "winch validate --set vars.release=1.4.2"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml, else all",
+          "text": "inventory to check"
+        },
+        {
+          "name": "--set",
+          "value": "vars.<name>=<value>",
+          "default": "",
+          "text": "variable value; repeatable"
+        },
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "JSON events on stdout"
+        }
+      ],
+      "see": [
+        "winch doc project",
+        "winch doc variables"
+      ]
+    },
+    {
+      "name": "fmt",
+      "summary": "format the project files",
+      "usage": [
+        "winch fmt"
+      ],
+      "description": [
+        "Fmt fixes the indentation and the step key order of the project files: winch.yaml, the inventories, the pipelines, and the recipes.",
+        "It indents with two spaces, and indents list items under their key.",
+        "It puts step keys in this order: name, the module or recipe key, vars, when, loop, then, confirm_access, notify. Steps in flow style keep their key order. A comment above a key that moves to the first place goes above the \"-\" of its step.",
+        "It keeps comments, blank lines, quoting, anchors, flow style, and line ends. It writes a file only when the result decodes to the same values. It prints each file that it changes.",
+        "When a file does not parse, or fmt cannot keep the layout of a file, fmt shows the error, exits with code 3, and changes no file."
+      ],
+      "examples": [
+        {
+          "comment": "format winch.yaml, the inventories, the pipelines, and the recipes",
+          "command": "winch fmt"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc step"
+      ]
+    },
+    {
+      "name": "plan",
+      "summary": "show the changes and change nothing",
+      "usage": [
+        "winch plan [<pipeline>] [flags]"
+      ],
+      "description": [
+        "Plan shows the changes that winch apply would make, and the plan hash. It changes nothing.",
+        "Leave out the pipeline name when the steps are at the top of winch.yaml.",
+        "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion. Each stage runs on the hosts in both its hosts and --hosts. The stages of --stages run in pipeline order.",
+        "A --set value parses as YAML.",
+        "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel.",
+        "With --exit-code, plan exits with code 2 when the plan has changes, unknown steps, pending handlers, a pending then, or a pending gate or assert."
+      ],
+      "examples": [
+        {
+          "comment": "show the changes of the pipeline site",
+          "command": "winch plan site"
+        },
+        {
+          "comment": "use the inventory production",
+          "command": "winch plan site --inventory production"
+        },
+        {
+          "comment": "plan with a value for one variable",
+          "command": "winch plan site --set vars.nginx_port=8080"
+        },
+        {
+          "comment": "plan two stages on the web hosts without web3",
+          "command": "winch plan site --hosts 'web & !web3' --stages nginx,site"
+        },
+        {
+          "comment": "exit with code 2 when apply would change something",
+          "command": "winch plan site --exit-code"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml",
+          "text": "inventory for the run"
+        },
+        {
+          "name": "--hosts",
+          "value": "<pattern>",
+          "default": "all",
+          "text": "only these hosts"
+        },
+        {
+          "name": "--stages",
+          "value": "<names>",
+          "default": "all",
+          "text": "only these stages, such as mail,monit"
+        },
+        {
+          "name": "--user",
+          "value": "[<host>=]<name>",
+          "default": "from the inventory",
+          "text": "SSH login user, for all hosts or one; repeatable"
+        },
+        {
+          "name": "--set",
+          "value": "vars.<name>=<value>",
+          "default": "",
+          "text": "variable value; repeatable"
+        },
+        {
+          "name": "--batch",
+          "value": "",
+          "default": "",
+          "text": "no questions from ssh"
+        },
+        {
+          "name": "--exit-code",
+          "value": "",
+          "default": "",
+          "text": "exit code 2 for a plan with changes"
+        },
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "JSON events on stdout"
+        }
+      ],
+      "see": [
+        "winch doc workflow",
+        "winch doc pipeline",
+        "winch doc inventory"
+      ]
+    },
+    {
+      "name": "apply",
+      "summary": "show the changes, ask, then make them",
+      "usage": [
+        "winch apply [<pipeline>] [flags]"
+      ],
+      "description": [
+        "Apply shows the plan of a pipeline, asks for approval, and then makes the changes.",
+        "Leave out the pipeline name when the steps are at the top of winch.yaml.",
+        "winch asks only when stdin and stderr are terminals. Without a terminal, and without --yes or --check, apply prints the plan and exits with code 5. Its last line is the command that applies the plan with its hash.",
+        "--check replaces the question. When the new plan has another hash, apply exits with code 6 and changes nothing.",
+        "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion. Each stage runs on the hosts in both its hosts and --hosts. The stages of --stages run in pipeline order.",
+        "A --set value parses as YAML.",
+        "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel. The apply question stays.",
+        "The first Ctrl-C lets the running step on each host finish and starts no new step. A second Ctrl-C closes the connections at once."
+      ],
+      "examples": [
+        {
+          "comment": "plan the pipeline site, ask, and make the changes",
+          "command": "winch apply site"
+        },
+        {
+          "comment": "apply on the test inventory without the question",
+          "command": "winch apply site --inventory test --yes"
+        },
+        {
+          "comment": "apply the stage mail on the mail hosts",
+          "command": "winch apply site --hosts mail --stages mail"
+        },
+        {
+          "comment": "apply only the plan that you checked before",
+          "command": "winch apply site --check a3f9c2e1d07b4c58"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml",
+          "text": "inventory for the run"
+        },
+        {
+          "name": "--hosts",
+          "value": "<pattern>",
+          "default": "all",
+          "text": "only these hosts"
+        },
+        {
+          "name": "--stages",
+          "value": "<names>",
+          "default": "all",
+          "text": "only these stages, such as mail,monit"
+        },
+        {
+          "name": "--user",
+          "value": "[<host>=]<name>",
+          "default": "from the inventory",
+          "text": "SSH login user, for all hosts or one; repeatable"
+        },
+        {
+          "name": "--set",
+          "value": "vars.<name>=<value>",
+          "default": "",
+          "text": "variable value; repeatable"
+        },
+        {
+          "name": "--batch",
+          "value": "",
+          "default": "",
+          "text": "no questions from ssh"
+        },
+        {
+          "name": "--yes",
+          "value": "",
+          "default": "",
+          "text": "no apply question"
+        },
+        {
+          "name": "--check",
+          "value": "<hash>",
+          "default": "",
+          "text": "plan hash that the apply needs"
+        },
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "JSON events on stdout"
+        }
+      ],
+      "see": [
+        "winch doc workflow",
+        "winch doc pipeline",
+        "winch doc inventory"
+      ]
+    },
+    {
+      "name": "run",
+      "summary": "plan and apply one module step",
+      "usage": [
+        "winch run <pattern> <module> [key=value ...] [flags]"
+      ],
+      "description": [
+        "Run plans one module step on the hosts of the pattern, asks, and applies it.",
+        "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion.",
+        "Each value parses as YAML: name=[htop,curl] is a list. Quote a value that YAML would change, such as mode='\"0644\"'. A value that YAML rejects, such as *x, @x, or [x, is an error that says to quote it.",
+        "The step runs in a stage named run. Unlike a pipeline step, it can use restarted and reloaded. Run rejects assert. Use winch exec for a check.",
+        "winch asks only when stdin and stderr are terminals. Without a terminal, and without --yes or --check, run prints the plan and exits with code 5. Its last line is the command that applies the plan with its hash.",
+        "--check replaces the question. When the new plan has another hash, run exits with code 6 and changes nothing.",
+        "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel. The apply question stays."
+      ],
+      "examples": [
+        {
+          "comment": "upgrade all packages on the mail hosts",
+          "command": "winch run mail upgrade mode=full"
+        },
+        {
+          "comment": "install two packages on the mail hosts without mail2",
+          "command": "winch run 'mail & !mail2' pkg name=[htop,curl]"
+        },
+        {
+          "comment": "restart monit on the monitor hosts",
+          "command": "winch run monitor service name=monit restarted=true"
+        },
+        {
+          "comment": "write /etc/motd only when the plan has this hash",
+          "command": "winch run web file path=/etc/motd content=hello --check a3f9c2e1d07b4c58"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml",
+          "text": "inventory for the run"
+        },
+        {
+          "name": "--user",
+          "value": "[<host>=]<name>",
+          "default": "from the inventory",
+          "text": "SSH login user, for all hosts or one; repeatable"
+        },
+        {
+          "name": "--batch",
+          "value": "",
+          "default": "",
+          "text": "no questions from ssh"
+        },
+        {
+          "name": "--yes",
+          "value": "",
+          "default": "",
+          "text": "no apply question"
+        },
+        {
+          "name": "--check",
+          "value": "<hash>",
+          "default": "",
+          "text": "plan hash that the apply needs"
+        },
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "JSON events on stdout"
+        }
+      ],
+      "see": [
+        "winch doc <module>",
+        "winch doc inventory",
+        "winch doc workflow"
+      ]
+    },
+    {
+      "name": "exec",
+      "summary": "run a shell command on hosts",
+      "usage": [
+        "winch exec <pattern> [flags] -- <command ...>"
+      ],
+      "description": [
+        "Exec runs a shell command on the hosts of the pattern, in parallel, and shows its output. It makes no plan and asks no question.",
+        "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion.",
+        "winch joins the words after -- with spaces and runs them through sh -c as root, in /.",
+        "Each host shows one block: the host name, then the output. Hosts with the same output and exit code share one block. A command that exits non-zero adds \"exit status N\" to its block. winch exits with code 1 when the command fails on a host.",
+        "With --json, each host gives one exec event with output and exit_code.",
+        "Ctrl-C stops the commands. Each host sends SIGINT to the command, and SIGKILL when it still runs after 10 seconds.",
+        "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel."
+      ],
+      "examples": [
+        {
+          "comment": "show the uptime of every host",
+          "command": "winch exec all -- uptime"
+        },
+        {
+          "comment": "show the last 50 log lines of the app container on the web hosts",
+          "command": "winch exec web -- docker logs app --tail 50"
+        },
+        {
+          "comment": "check nginx on the web hosts without web3, as JSON",
+          "command": "winch exec 'web & !web3' --json -- systemctl is-active nginx"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml",
+          "text": "inventory for the run"
+        },
+        {
+          "name": "--user",
+          "value": "[<host>=]<name>",
+          "default": "from the inventory",
+          "text": "SSH login user, for all hosts or one; repeatable"
+        },
+        {
+          "name": "--batch",
+          "value": "",
+          "default": "",
+          "text": "no questions from ssh"
+        },
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "one exec event per host on stdout"
+        }
+      ],
+      "see": [
+        "winch doc inventory",
+        "winch doc remote"
+      ]
+    },
+    {
+      "name": "secret",
+      "summary": "manage secrets and the age key",
+      "usage": [
+        "winch secret <command>"
+      ],
+      "description": [
+        "Secret encrypts values with age for the recipients in winch.yaml.",
+        "winch reads the age key from the stdout of the command in WINCH_AGE_IDENTITY_CMD, which runs through sh -c. Without it, winch reads the file that WINCH_AGE_KEY names, or else ~/.config/winch/age.key. Both variables set is an error."
+      ],
+      "examples": [
+        {
+          "comment": "make your age key and add it to the recipients",
+          "command": "winch secret init"
+        },
+        {
+          "comment": "write a random password into the inventory",
+          "command": "winch secret generate vars.monit_password"
+        },
+        {
+          "comment": "encrypt the content of a file",
+          "command": "winch secret encrypt < dkim.key"
+        },
+        {
+          "comment": "encrypt the output of a command",
+          "command": "openssl rand -hex 16 | winch secret encrypt"
+        },
+        {
+          "comment": "encrypt all secrets again after a change of the recipients",
+          "command": "winch secret rekey"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "secret init",
+      "summary": "add an age key to the recipients",
+      "usage": [
+        "winch secret init"
+      ],
+      "description": [
+        "Init makes an age key when there is none, prints its public key, and adds the public key to recipients in winch.yaml when it is not in the list.",
+        "The key is the file that WINCH_AGE_KEY names, or else ~/.config/winch/age.key. A new key gets mode 0600, and its directory 0700.",
+        "With WINCH_AGE_IDENTITY_CMD, init makes no key and reads the public key from the stdout of the command. Both variables set is an error.",
+        "The new key can read the secrets only after a member who can read them runs winch secret rekey."
+      ],
+      "examples": [
+        {
+          "comment": "make a key when there is none, and add it to the recipients",
+          "command": "winch secret init"
+        },
+        {
+          "comment": "use the key at another path",
+          "command": "WINCH_AGE_KEY=~/keys/acme.key winch secret init"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "secret generate",
+      "summary": "write a random password as a secret",
+      "usage": [
+        "winch secret generate vars.<name> [flags]"
+      ],
+      "description": [
+        "Generate makes a random password of 32 letters and digits, encrypts it for the recipients in winch.yaml, and writes it as a !secret value into the inventory.",
+        "It writes into the vars of the group all, or of the host of --host. The file keeps its comments and layout.",
+        "Something in the project must read the variable. The variable must not be in those vars yet, also not as null."
+      ],
+      "examples": [
+        {
+          "comment": "write a password into the vars of the group all",
+          "command": "winch secret generate vars.monit_password"
+        },
+        {
+          "comment": "write a password into the vars of one host",
+          "command": "winch secret generate vars.db_password --host db1.acme.com"
+        },
+        {
+          "comment": "write a password into the inventory production",
+          "command": "winch secret generate vars.db_password --inventory production"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--inventory",
+          "value": "<name>",
+          "default": "inventory in winch.yaml",
+          "text": "inventory to write"
+        },
+        {
+          "name": "--host",
+          "value": "<name>",
+          "default": "the group all",
+          "text": "host whose vars get the value"
+        }
+      ],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "secret encrypt",
+      "summary": "encrypt a value from stdin",
+      "usage": [
+        "winch secret encrypt"
+      ],
+      "description": [
+        "Encrypt reads a value from stdin, encrypts it for the recipients in winch.yaml, and prints it as a !secret value for a variable.",
+        "A value of one line loses its trailing newline. A value of more lines stays as it is.",
+        "A !secret stands only in a variable value: in inventory vars, and in the defaults of winch.yaml and of recipes."
+      ],
+      "examples": [
+        {
+          "comment": "encrypt the content of a file",
+          "command": "winch secret encrypt < dkim.key"
+        },
+        {
+          "comment": "encrypt the output of a command",
+          "command": "openssl rand -hex 16 | winch secret encrypt"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "secret rekey",
+      "summary": "encrypt all secrets again",
+      "usage": [
+        "winch secret rekey"
+      ],
+      "description": [
+        "Rekey encrypts all secrets in winch.yaml, the inventories, and the recipes again for the recipients in winch.yaml. It lists the files it rewrote.",
+        "Run it after a change of the recipients.",
+        "It writes through a symbolic link to its target. When a secret does not decrypt, rekey changes no file.",
+        "winch reads the age key from the stdout of the command in WINCH_AGE_IDENTITY_CMD, which runs through sh -c. Without it, winch reads the file that WINCH_AGE_KEY names, or else ~/.config/winch/age.key. Both variables set is an error."
+      ],
+      "examples": [
+        {
+          "comment": "encrypt all secrets again for the recipients in winch.yaml",
+          "command": "winch secret rekey"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "doc",
+      "summary": "show the reference",
+      "usage": [
+        "winch doc [<topic> | <module>][.<key>...]",
+        "winch doc --json"
+      ],
+      "description": [
+        "Doc shows the reference: the index of topics and modules, a topic, the keys of one module with an example step, or the full text of one key or function.",
+        "It needs no project. The text comes from the definitions that the load checks use, so it matches the installed version.",
+        "An unknown module or key is an error with \"did you mean\"."
+      ],
+      "examples": [
+        {
+          "comment": "list the topics and the modules",
+          "command": "winch doc"
+        },
+        {
+          "comment": "show a topic",
+          "command": "winch doc project"
+        },
+        {
+          "comment": "show one key of a topic",
+          "command": "winch doc step.when"
+        },
+        {
+          "comment": "show the keys of a module and an example step",
+          "command": "winch doc file"
+        },
+        {
+          "comment": "show the full text of one key",
+          "command": "winch doc file.mode"
+        },
+        {
+          "comment": "show a key of a list element",
+          "command": "winch doc firewall.allow.tcp"
+        },
+        {
+          "comment": "print the whole reference as JSON",
+          "command": "winch doc --json"
+        }
+      ],
+      "flags": [
+        {
+          "name": "--json",
+          "value": "",
+          "default": "",
+          "text": "whole reference as one JSON document"
+        }
+      ],
+      "see": []
+    },
+    {
+      "name": "version",
+      "summary": "print the version and the platform",
+      "usage": [
+        "winch version",
+        "winch --version"
+      ],
+      "description": [
+        "Version prints the version of winch and the platform, such as winch v0.1.0 darwin/arm64."
+      ],
+      "examples": [
+        {
+          "comment": "print the version and the platform",
+          "command": "winch version"
+        }
+      ],
+      "flags": [],
+      "see": []
+    }
+  ]
+}

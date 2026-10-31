@@ -1,0 +1,31 @@
+{{- $md := "" -}}
+{{- range $b := . -}}
+  {{- if eq $b.type "heading" -}}
+    {{- $md = printf "%s## %s\n\n" $md (partial "reference/esc.html" $b.text) -}}
+  {{- else if eq $b.type "paragraph" -}}
+    {{- $md = printf "%s%s\n\n" $md (partial "reference/esc.html" $b.text) -}}
+  {{- else if eq $b.type "list" -}}
+    {{- range $i, $item := $b.items -}}
+      {{- $md = printf "%s%s %s\n" $md (cond $b.ordered (printf "%d." (add $i 1)) "-") (partial "reference/esc.html" $item) -}}
+    {{- end -}}
+    {{- $md = printf "%s\n" $md -}}
+  {{- else if eq $b.type "table" -}}
+    {{- $n := len (index $b.rows 0) -}}
+    {{- $md = printf "%s|%s\n|%s\n" $md (strings.Repeat $n "  |") (strings.Repeat $n " --- |") -}}
+    {{- range $b.rows -}}
+      {{- $md = printf "%s|" $md -}}
+      {{- range . -}}
+        {{- $md = printf "%s %s |" $md (partial "reference/esc.html" .) -}}
+      {{- end -}}
+      {{- $md = printf "%s\n" $md -}}
+    {{- end -}}
+    {{- $md = printf "%s\n" $md -}}
+  {{- else if eq $b.type "code" -}}
+    {{- $md = printf "%s```\n%s\n```\n\n" $md (chomp $b.text) -}}
+  {{- else if eq $b.type "example" -}}
+    {{- $md = printf "%s## Example\n\n```\n%s\n```\n\n" $md (chomp $b.text) -}}
+  {{- else -}}
+    {{- errorf "reference: unknown block type %q" $b.type -}}
+  {{- end -}}
+{{- end -}}
+{{- return $md -}}

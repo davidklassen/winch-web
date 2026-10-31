@@ -1,0 +1,17 @@
+{{- $md := printf "# %s\n\n%s\n\n" .name (partial "reference/esc.html" .line) -}}
+{{- $md = printf "%s%s" $md (partial "reference/blocks.html" (where .blocks "type" "ne" "example")) -}}
+{{- with .keys -}}
+  {{- $md = printf "%s%s" $md (partial "reference/keys.html" .) -}}
+{{- end -}}
+{{- with .functions -}}
+  {{- $md = printf "%s## Functions\n\n| Function | Meaning |\n| --- | --- |\n" $md -}}
+  {{- range . -}}
+    {{- $md = printf "%s| [`%s`](#%s.%s) | %s |\n" $md .name $.name .name (partial "reference/esc.html" .line) -}}
+  {{- end -}}
+  {{- $md = printf "%s\n" $md -}}
+  {{- range . -}}
+    {{- $md = printf "%s### `%s.%s` {#%s.%s}\n\n%s\n\n" $md $.name .name $.name .name (partial "reference/esc.html" .text) -}}
+  {{- end -}}
+{{- end -}}
+{{- $md = printf "%s%s" $md (partial "reference/blocks.html" (where .blocks "type" "example")) -}}
+{{- return $md -}}

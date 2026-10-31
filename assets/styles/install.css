@@ -1,0 +1,34 @@
+.install {
+  position: relative;
+  margin: var(--space-16) 0;
+
+  pre { margin: 0; padding-inline-end: 3.5rem; }
+}
+
+.install-copy {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  inset-inline-end: 0;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--term-dim);
+  cursor: pointer;
+
+  span {
+    display: flex;
+    padding: var(--space-8);
+    border-radius: var(--border-radius);
+  }
+
+  &:hover { color: var(--term-fg); }
+  &:hover span { background: var(--term-line); }
+  .icon-done { display: none; color: var(--term-green); }
+  &.copied .icon-copy { display: none; }
+  &.copied .icon-done { display: block; }
+}

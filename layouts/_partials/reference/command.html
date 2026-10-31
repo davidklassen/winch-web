@@ -1,0 +1,26 @@
+{{- $md := printf "# winch %s\n\n%s\n\n" .name (partial "reference/esc.html" .summary) -}}
+{{- with .examples -}}
+  {{- $md = printf "%s## Examples\n\n" $md -}}
+  {{- range . -}}
+    {{- $md = printf "%s```sh\n# %s\n%s\n```\n\n" $md .comment .command -}}
+  {{- end -}}
+{{- end -}}
+{{- $md = printf "%s## Usage\n\n```\n%s\n```\n\n" $md (delimit .usage "\n") -}}
+{{- range .description -}}
+  {{- $md = printf "%s%s\n\n" $md (partial "reference/esc.html" .) -}}
+{{- end -}}
+{{- with .flags -}}
+  {{- $md = printf "%s## Flags\n\n| Flag | Value | Default | Meaning |\n| --- | --- | --- | --- |\n" $md -}}
+  {{- range . -}}
+    {{- $value := cond (eq .value "") "" (printf "`%s`" .value) -}}
+    {{- $md = printf "%s| `%s` | %s | %s | %s |\n" $md .name $value (partial "reference/esc.html" .default) (partial "reference/esc.html" .text) -}}
+  {{- end -}}
+  {{- $md = printf "%s\n" $md -}}
+{{- end -}}
+{{- with .see -}}
+  {{- $md = printf "%s## See\n\n" $md -}}
+  {{- range . -}}
+    {{- $md = printf "%s- `%s`\n" $md . -}}
+  {{- end -}}
+{{- end -}}
+{{- return $md -}}

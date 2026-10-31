@@ -1,0 +1,17 @@
+# {{ site.Title }}
+
+> {{ .Description }}
+{{ define "llms-link" }}
+- [{{ .Title }}]({{ (.OutputFormats.Get "markdown").Permalink }}){{ with .Description }}: {{ . }}{{ end }}
+{{- end }}
+{{- define "llms-section" }}
+{{- template "llms-link" . }}
+{{- range .Pages.ByWeight }}{{ if .IsSection }}{{ template "llms-section" . }}{{ else }}{{ template "llms-link" . }}{{ end }}{{ end }}
+{{- end }}
+## Docs
+{{ template "llms-link" (site.GetPage "/docs") }}
+{{ range (site.GetPage "/docs").RegularPages.ByWeight }}{{ template "llms-link" . }}{{ end }}
+{{ range (site.GetPage "/docs").Sections.ByWeight }}
+## {{ .Title }}
+{{ template "llms-section" . }}
+{{ end }}

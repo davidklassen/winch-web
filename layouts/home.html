@@ -1,0 +1,16 @@
+{{ define "menu-container" }}<!-- -->{{ end }}
+{{ define "toc-container" }}<!-- -->{{ end }}
+{{ define "header" }}<!-- -->{{ end }}
+
+{{ define "main" }}
+<nav class="home-nav">
+  <a class="home-brand" href="{{ "/" | relURL }}">{{ site.Title }}</a>
+  <span>
+    <a href="{{ (site.GetPage "/docs").RelPermalink }}">Docs</a>
+    <a href="{{ site.Params.BookRepo }}">GitHub</a>
+  </span>
+</nav>
+<article class="markdown book-article">
+  {{- .Content -}}
+</article>
+{{ end }}

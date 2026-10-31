@@ -1,0 +1,6 @@
+<div class="hero">
+  <div class="hero-text">
+    {{ .Inner | .Page.RenderString (dict "display" "block") }}
+  </div>
+  {{ partial "examples.html" . }}
+</div>

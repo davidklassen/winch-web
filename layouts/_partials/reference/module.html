@@ -1,0 +1,8 @@
+{{- $md := printf "# %s\n\n%s\n\n%s\n\n" .name (partial "reference/esc.html" .line) (partial "reference/esc.html" .body) -}}
+{{- with .keys -}}
+  {{- $md = printf "%s%s" $md (partial "reference/keys.html" .) -}}
+{{- end -}}
+{{- with .example -}}
+  {{- $md = printf "%s## Example\n\n```%s\n%s```\n" $md (cond (hasPrefix . "winch ") "sh" "yaml") . -}}
+{{- end -}}
+{{- return $md -}}

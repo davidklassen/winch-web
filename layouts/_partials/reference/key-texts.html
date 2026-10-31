@@ -1,0 +1,8 @@
+{{- $md := "" -}}
+{{- range . -}}
+  {{- $head := .type -}}
+  {{- if .required }}{{ $head = printf "%s, required" $head }}{{ else if .default }}{{ $head = printf "%s, default %s" $head .default }}{{ end -}}
+  {{- $md = printf "%s### `%s` {#%s}\n\n%s\n\n%s\n\n" $md .path .path (partial "reference/esc.html" $head) (partial "reference/esc.html" .text) -}}
+  {{- $md = printf "%s%s" $md (partial "reference/key-texts.html" .keys) -}}
+{{- end -}}
+{{- return $md -}}
