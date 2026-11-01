@@ -94,7 +94,7 @@ web1.example.com
         start
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan 55edc14328984637
+plan 16580ad9c636c795
 ```
 
 The plan lists each step that will change something on the server. `+`
@@ -139,7 +139,7 @@ Run `winch plan` again:
 
 ```output
 1 host: 0 to change, 1 unchanged, 0 unknown
-plan b4b3403c8162a524
+plan a45062412bba9ac8
 ```
 
 The server matches the project, so there is nothing to change.
@@ -168,7 +168,7 @@ web1.example.com
         +<p>Welcome to example.com.</p>
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan a9335ac7ddc5e345
+plan c0c0648e5fb0e750
 ```
 
 Apply it with `winch apply`.

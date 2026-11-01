@@ -47,6 +47,7 @@ winch plan
 ```
 
 ```output
+web1.example.com: sending the helper (amd64)
 web1.example.com
   hello
     ~ Write the message of the day: file /etc/motd
@@ -61,7 +62,7 @@ web1.example.com
         +Hello from winch.
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan e216a94e90a21227
+plan 71821526718fee56
 ```
 
 The plan shows the change as a diff. Nothing changes yet.
@@ -89,7 +90,7 @@ Run `winch plan` again:
 
 ```output
 1 host: 0 to change, 1 unchanged, 0 unknown
-plan a1a1f73eb8f75003
+plan f219b2b3efa04f53
 ```
 
 The server matches the project, so there is nothing to change.

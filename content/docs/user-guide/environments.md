@@ -92,7 +92,7 @@ winch plan
 ```
 
 ```error
-no inventory: use --inventory, or set inventory in winch.yaml
+name an inventory with --inventory: production, staging; or set inventory in winch.yaml
 ```
 
 Plan production:
@@ -103,7 +103,7 @@ winch plan --inventory production
 
 ```output
 1 host: 0 to change, 1 unchanged, 0 unknown
-plan 7dfc50712543ed4a
+plan 2015cb531eece090
 ```
 
 The template gives the same page as before, so production has nothing
@@ -114,6 +114,7 @@ winch plan --inventory staging
 ```
 
 ```output
+staging1.example.com: sending the helper (amd64)
 staging1.example.com
   example
     + Install nginx and nftables: pkg nginx, nftables
@@ -144,7 +145,7 @@ staging1.example.com
         start
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan 434b04645afcdfde
+plan b2eee71fdf9c948b
 ```
 
 The staging server gets all the steps, with its own domain. Apply

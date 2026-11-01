@@ -137,7 +137,7 @@ staging1.example.com
       ! handler nginx.reload
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan 5303e943345da0fd
+plan 738aee7064ea504d
 ```
 
 The plan shows the steps under the stage and the recipe. `!` marks the

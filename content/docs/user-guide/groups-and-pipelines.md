@@ -120,6 +120,7 @@ winch plan site --inventory production
 ```
 
 ```output
+db1.example.com: sending the helper (amd64)
 db1.example.com
   base
     + Install nftables: pkg nftables
@@ -138,7 +139,7 @@ db1.example.com
         load the rules
 
 2 hosts: 1 to change, 1 unchanged, 0 unknown
-plan d0abec2ae12a4254
+plan e2cd464e300272a7
 ```
 
 `db1` gets only the stage `base`. `web1` has nothing to change: its

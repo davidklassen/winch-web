@@ -115,7 +115,7 @@ staging1.example.com
       ! handler nginx.reload
 
 1 host: 1 to change, 0 unchanged, 0 unknown
-plan c3c271e11fa342e7
+plan 4b0778e7e01560bc
 ```
 
 Apply it:

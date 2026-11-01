@@ -45,8 +45,9 @@ winch exec web1.example.com -- uptime
 ```
 
 ```output
+web1.example.com: sending the helper (amd64)
 web1.example.com
-   16:09:01 up 1 min,  1 user,  load average: 0.08, 0.03, 0.01
+   11:35:55 up 2 min,  1 user,  load average: 0.00, 0.00, 0.00
 ```
 
 You see the output of `uptime` from the server.
