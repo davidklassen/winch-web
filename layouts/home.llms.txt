@@ -1,17 +1,24 @@
+{{- define "llms-link" }}
+- [{{ .Title }}]({{ (.OutputFormats.Get "markdown").Permalink }}){{ with .Description }}: {{ . }}{{ end }}
+{{- end -}}
+{{- define "llms-pages" }}
+{{- template "llms-link" . }}
+{{- range .RegularPages.ByWeight }}{{ template "llms-link" . }}{{ end }}
+{{- end -}}
 # {{ site.Title }}
 
 > {{ .Description }}
-{{ define "llms-link" }}
-- [{{ .Title }}]({{ (.OutputFormats.Get "markdown").Permalink }}){{ with .Description }}: {{ . }}{{ end }}
-{{- end }}
-{{- define "llms-section" }}
-{{- template "llms-link" . }}
-{{- range .Pages.ByWeight }}{{ if .IsSection }}{{ template "llms-section" . }}{{ else }}{{ template "llms-link" . }}{{ end }}{{ end }}
-{{- end }}
+
+The source code is at {{ site.Params.BookRepo }}. All docs pages in one file: {{ (.OutputFormats.Get "llmsfull").Permalink }}
+
 ## Docs
-{{ template "llms-link" (site.GetPage "/docs") }}
-{{ range (site.GetPage "/docs").RegularPages.ByWeight }}{{ template "llms-link" . }}{{ end }}
+{{ template "llms-link" . }}
+{{- template "llms-pages" (site.GetPage "/docs") }}
 {{ range (site.GetPage "/docs").Sections.ByWeight }}
 ## {{ .Title }}
-{{ template "llms-section" . }}
+{{ template "llms-pages" . }}
+{{ range .Sections.ByWeight }}
+## {{ .Title }}
+{{ template "llms-pages" . }}
 {{ end }}
+{{- end }}

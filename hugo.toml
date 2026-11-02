@@ -1,6 +1,7 @@
 baseURL = 'https://winchstack.app/'
 title = 'winch'
 disableKinds = ['taxonomy', 'term', 'rss']
+enableRobotsTXT = true
 
 [module]
 [[module.imports]]
@@ -12,13 +13,20 @@ baseName = 'llms'
 isPlainText = true
 root = true
 
+[outputFormats.llmsfull]
+mediaType = 'text/plain'
+baseName = 'llms-full'
+isPlainText = true
+root = true
+notAlternative = true
+
 [outputFormats.markdown]
 mediaType = 'text/markdown'
 baseName = 'index'
 isPlainText = true
 
 [outputs]
-home = ['html', 'llms']
+home = ['html', 'markdown', 'llms', 'llmsfull']
 page = ['html', 'markdown']
 section = ['html', 'markdown']
 

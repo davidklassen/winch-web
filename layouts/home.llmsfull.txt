@@ -1,0 +1,8 @@
+# {{ site.Title }}
+
+> {{ .Description }}
+{{ range partial "docs-pages.html" (site.GetPage "/docs") }}
+Source: {{ .Permalink }}
+
+{{ partial "markdown.html" . }}
+{{ end -}}

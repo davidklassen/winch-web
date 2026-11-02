@@ -1,0 +1,10 @@
+{{- /* The docs pages in reading order: each section before its pages, and
+the pages of a section before its subsections. */ -}}
+{{- $pages := slice . -}}
+{{- range .RegularPages.ByWeight -}}
+  {{- $pages = $pages | append . -}}
+{{- end -}}
+{{- range .Sections.ByWeight -}}
+  {{- $pages = $pages | append (partial "docs-pages.html" .) -}}
+{{- end -}}
+{{- return $pages -}}

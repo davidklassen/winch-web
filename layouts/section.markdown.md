@@ -1,1 +1,1 @@
-{{ .RawContent | strings.TrimLeft "\n" }}
+{{ partial "markdown.html" . }}

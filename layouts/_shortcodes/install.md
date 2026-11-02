@@ -1,0 +1,3 @@
+```sh
+{{ site.Params.install }}
+```

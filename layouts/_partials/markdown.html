@@ -1,0 +1,7 @@
+{{- /* The page as Markdown: its source with the shortcodes rendered by their
+markdown templates. The rendered shortcodes leave runs of empty lines, and
+heading attributes are for the HTML page only. */ -}}
+{{- $md := .RenderShortcodes -}}
+{{- $md = replaceRE `(?m)^(#+ .*?) \{anchor=false\}$` "$1" $md -}}
+{{- $md = replaceRE `\n{3,}` "\n\n" $md -}}
+{{- return strings.Trim $md "\n" -}}
