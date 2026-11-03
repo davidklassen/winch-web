@@ -1,8 +1,36 @@
 .install {
-  position: relative;
   margin: var(--space-16) 0;
 
   pre { margin: 0; padding-inline-end: 3.5rem; }
+}
+
+.install-tab-input { position: absolute; opacity: 0; pointer-events: none; }
+
+.install-tabs {
+  display: flex;
+  gap: var(--space-16);
+  margin-bottom: var(--space-8);
+
+  label {
+    cursor: pointer;
+    opacity: 0.55;
+    border-bottom: 2px solid transparent;
+  }
+
+  label:hover { opacity: 1; }
+}
+
+.install-command { position: relative; display: none; }
+
+.install-tab-input:nth-of-type(1):checked ~ .install-tabs label:nth-of-type(1),
+.install-tab-input:nth-of-type(2):checked ~ .install-tabs label:nth-of-type(2) {
+  opacity: 1;
+  border-bottom-color: currentColor;
+}
+
+.install-tab-input:nth-of-type(1):checked ~ .install-commands .install-command:nth-child(1),
+.install-tab-input:nth-of-type(2):checked ~ .install-commands .install-command:nth-child(2) {
+  display: block;
 }
 
 .install-copy {

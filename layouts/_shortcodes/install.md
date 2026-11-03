@@ -1,3 +1,7 @@
+{{- range site.Params.install }}
+{{ .name }}:
+
 ```sh
-{{ site.Params.install }}
+{{ .command }}
 ```
+{{ end -}}

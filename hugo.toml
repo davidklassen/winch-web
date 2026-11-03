@@ -49,7 +49,14 @@ BookSearch = true
 BookComments = false
 BookToC = true
 BookRepo = 'https://github.com/davidklassen/winch'
-install = 'curl -fsSL https://winchstack.app/install.sh | sh'
+
+[[params.install]]
+name = 'curl'
+command = 'curl -fsSL https://winchstack.app/install.sh | sh'
+
+[[params.install]]
+name = 'brew'
+command = 'brew install davidklassen/tap/winch'
 
 [[menu.after]]
 name = 'GitHub'
