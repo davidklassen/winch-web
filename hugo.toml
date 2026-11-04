@@ -43,6 +43,7 @@ unsafe = true
 disable = true
 
 [params]
+images = ['og.png']
 BookTheme = 'mote-auto'
 BookSection = 'docs'
 BookSearch = true
