@@ -484,7 +484,7 @@
                       "default": "",
                       "required": true,
                       "line": "must exit 0",
-                      "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again.",
+                      "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.",
                       "keys": []
                     },
                     {
@@ -567,7 +567,7 @@
                   "default": "",
                   "required": true,
                   "line": "must exit 0",
-                  "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again.",
+                  "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.",
                   "keys": []
                 },
                 {
@@ -897,7 +897,7 @@
             },
             {
               "type": "paragraph",
-              "text": "When a step notifies a handler, winch marks the handler as pending on the host before the step changes anything. The mark goes when the handler succeeds. When a run stops first, the handler stays pending. It runs the next time its recipe or stage runs on that host. The plan shows a handler that will run with \"!\"."
+              "text": "When a step notifies a handler, winch marks the handler as pending on the host before the step changes anything. The mark goes when the handler succeeds. When a run stops first, or --stages leaves out the stage of its recipe, the handler stays pending. It runs the next time its recipe or stage runs on that host. The plan shows a handler that will run with \"!\". For a handler that the run does not reach, the plan shows a note, such as \"a pending handler ssh.reload waits until its recipe runs on this host\". The note is not a change."
             }
           ],
           "keys": [],
@@ -1077,7 +1077,7 @@
             },
             {
               "type": "example",
-              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.acme.com: {}\n  web2.acme.com: {}\nvars:\n  sites: [blog, shop]\n  admins: [ann, bob]\nsteps:\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"server_name {{ .item }}.{{ .host.short }};\\n\"\n    loop: !expr vars.sites\n  - name: Allow the admins\n    file:\n      path: /etc/ssh/sshd_config.d/admins.conf\n      content: !tpl \"AllowUsers{{ range .vars.admins }} {{ . }}{{ end }}\\n\"\n  - name: List the other hosts\n    recipe: peers\n    vars:\n      peers_hosts: !expr filter(match(\"all\"), .name != host.name)\nrecipes:\n  peers:\n    steps:\n      - file:\n          path: /etc/peers\n          content: !tpl \"{{ range .vars.peers_hosts }}{{ .name }} {{ .address }}\\n{{ end }}\"\n"
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.acme.com: {}\n  web2.acme.com: {}\nvars:\n  sites: [blog, shop]\n  admins: [ann, bob]\nsteps:\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"server_name {{ .item }}.{{ .host.short }};\\n\"\n    loop: !expr vars.sites\n  - name: List the admins\n    file:\n      path: /etc/app/admins.conf\n      content: !tpl \"admins ={{ range .vars.admins }} {{ . }}{{ end }}\\n\"\n  - name: List the other hosts\n    recipe: peers\n    vars:\n      peers_hosts: !expr filter(match(\"all\"), .name != host.name)\nrecipes:\n  peers:\n    steps:\n      - file:\n          path: /etc/peers\n          content: !tpl \"{{ range .vars.peers_hosts }}{{ .name }} {{ .address }}\\n{{ end }}\"\n"
             }
           ],
           "keys": [],
@@ -1834,7 +1834,7 @@
           "blocks": [
             {
               "type": "paragraph",
-              "text": "A secret is a value that the project keeps encrypted and winch never prints."
+              "text": "A secret is a value that the project keeps encrypted. Only winch secret decrypt prints it."
             },
             {
               "type": "heading",
@@ -1864,17 +1864,83 @@
                   "make an age key, add it to recipients"
                 ],
                 [
-                  "winch secret generate vars.<name>",
-                  "write a random password into the inventory"
+                  "winch secret generate [<path>]",
+                  "make a random password as a secret: write it at the path, or print it"
                 ],
                 [
-                  "winch secret encrypt",
-                  "encrypt a value from stdin"
+                  "winch secret encrypt [<path>]",
+                  "encrypt a value from stdin or a prompt: write it at the path, or print it"
+                ],
+                [
+                  "winch secret decrypt [<path>]",
+                  "print the plaintext of the secret at the path, or of a secret on stdin"
                 ],
                 [
                   "winch secret rekey",
                   "encrypt all secrets for the current recipients"
                 ]
+              ]
+            },
+            {
+              "type": "paragraph",
+              "text": "winch secret generate and winch secret encrypt need the recipients, but no age key. generate never prints the password."
+            },
+            {
+              "type": "paragraph",
+              "text": "winch secret encrypt reads a pipe on stdin. At a terminal, it asks for one line twice and does not show what you type. When the two values differ, it writes nothing."
+            },
+            {
+              "type": "paragraph",
+              "text": "winch secret decrypt needs the age key. It prints the plaintext and nothing else. It reads a !secret value on stdin, with or without the tag. A path to a map or to a value that is not a !secret is an error."
+            },
+            {
+              "type": "heading",
+              "text": "Paths"
+            },
+            {
+              "type": "paragraph",
+              "text": "A path names a place in the project, with keys joined by \".\". It works the same for an inventory or a recipe in its own file and as a key in winch.yaml."
+            },
+            {
+              "type": "table",
+              "rows": [
+                [
+                  "vars.x",
+                  "the default of x in winch.yaml"
+                ],
+                [
+                  "recipes.mail.vars.mail_x",
+                  "the default of mail_x in the recipe mail"
+                ],
+                [
+                  "groups.all.vars.x, hosts.web1.vars.x",
+                  "the inventory at the top of winch.yaml"
+                ],
+                [
+                  "inventories.prod.groups.all.vars.x",
+                  "the inventory prod"
+                ],
+                [
+                  "vars.users.alice",
+                  "the key alice in the map variable users"
+                ],
+                [
+                  "vars.dkim_keys[\"acme.com\"]",
+                  "the key acme.com in the map variable dkim_keys"
+                ]
+              ]
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "The path ends at a variable value or below it in a map. A path cannot name a list item.",
+                "A key below the variable name that holds a dot or \"[\" stands in brackets and double quotes.",
+                "generate and encrypt replace the value at the path, and the output says replaced vars.x in winch.yaml. They add a missing path with the maps it needs, and the output says added vars.x in winch.yaml.",
+                "The inventory, the recipe, the host, and the group must exist. The group all always exists.",
+                "For generate and encrypt, something in the project must read the variable. A path that gives a variable a second default is an error.",
+                "The commands do not load the whole project, so errors in other places do not stop them.",
+                "generate and encrypt keep the comments and layout of the file. A flow map on the path, such as {a: 1}, is an error. They write through a symbolic link to the target."
               ]
             },
             {
@@ -2041,8 +2107,8 @@
               "ordered": false,
               "items": [
                 "A step that stops, disables, masks, or removes the SSH server fails: \"this cuts off winch's access\". So does a pkg or upgrade step that removes sudo while the login user is not root, or the package of the login user's shell.",
-                "Some steps get the rollback of confirm_access without it: a change of the login user's authorized_keys, ~/.ssh, or home directory, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
-                "A step that changes sshd's config while ssh.socket is active, as on Ubuntu, restarts ssh.socket. It gets the same protection.",
+                "Some steps get the rollback of confirm_access without it: a change of the login user's home directory, ~/.ssh, or any file in ~/.ssh, such as authorized_keys or rc, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
+                "A step that changes sshd's config while ssh.socket is active, as on Ubuntu, restarts ssh.socket. It gets the same protection. sshd's config includes the unit files and drop-ins of ssh.service and ssh.socket in /etc/systemd/system.",
                 "After the last step of a host that changed something, winch checks the access once more. When it fails, the host fails, and nothing rolls back."
               ]
             },
@@ -2319,7 +2385,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A command stops after 10 minutes, or after the timeout of a cmd step in seconds. The helper sends SIGTERM to the command and its child processes, and SIGKILL 10 seconds later to those that still run. The step fails, and the error shows the last 10 lines of output. apt-get in pkg, repo, and upgrade has no time limit."
+              "text": "A command stops after 10 minutes, after the timeout of a cmd step in seconds, or after the --timeout of winch exec. The helper sends SIGTERM to the command and its child processes, and SIGKILL 10 seconds later to those that still run. The step fails, and the error shows the last 10 lines of output. apt-get in pkg, repo, and upgrade has no time limit."
             },
             {
               "type": "paragraph",
@@ -2345,6 +2411,10 @@
                   "pending handlers"
                 ],
                 [
+                  "masked/<project>/",
+                  "the masked content of each file that holds a secret"
+                ],
+                [
                   "then/<project>",
                   "pending then commands"
                 ],
@@ -2355,6 +2425,10 @@
                 [
                   "certbot-hooks/<project>",
                   "pending certbot hooks"
+                ],
+                [
+                  "apt/",
+                  "the package index that the plan reads, the sources it plans with, and the archives that a session fetches"
                 ],
                 [
                   "downloads/<project>",
@@ -2460,7 +2534,7 @@
           "default": "nginx",
           "required": false,
           "line": "challenge plugin",
-          "text": "Challenge plugin: nginx, apache, standalone, or webroot. The nginx and apache plugins do not change the config of the web server. standalone binds port 80 itself; pre_hook and post_hook can stop and start what holds that port. webroot needs webroot_path.",
+          "text": "Challenge plugin: nginx, apache, standalone, or webroot. The nginx and apache plugins do not change the config of the web server. When a challenge runs, they reload it, and the plan says so. standalone binds port 80 itself; pre_hook and post_hook can stop and start what holds that port. webroot needs webroot_path.",
           "keys": []
         },
         {
@@ -2684,7 +2758,7 @@
           "default": "false",
           "required": false,
           "line": "owner and group for the whole tree",
-          "text": "Owner and group for the whole tree. The mode stays the mode of the directory alone.",
+          "text": "Owner and group for the whole tree. The mode stays the mode of the directory alone. The plan fails when another step gives a path in the tree another owner or group; a file with content and no owner counts as root.",
           "keys": []
         },
         {
@@ -3324,7 +3398,7 @@
     {
       "name": "service",
       "line": "control a systemd unit",
-      "body": "With running: false, a missing unit file is ok, with the note <unit> does not exist. A service step with confirm_access: true runs the access check after the step, and rolls back when it fails. Run winch doc step.confirm_access. In a handler, restarted and reloaded check as ok when a service step of the run started the unit after the handler's last notify, no earlier step of the handler changed anything, and the step has no confirm_access.",
+      "body": "With running: false, a missing unit file is ok, with the note <unit> does not exist. A service step with confirm_access: true runs the access check after the step, and rolls back when it fails. Run winch doc step.confirm_access. In a handler, restarted and reloaded check as ok when a service step of the run started the unit after the handler's last notify, no earlier step of the handler changed anything, and the step has no confirm_access.\n\nA unit of type simple, exec, forking, or idle does not report readiness. After its start or restart, apply watches it for 2 seconds. A reload of such a unit without ExecReload is a restart, and gets the watch. The step fails when the unit is not running then, or when systemd restarted it in that time. A unit that crashes after the 2 seconds passes. A reload ends when ExecReload ends: one that only sends a signal is confirmed as sent, and the unit can still end after it. A health gate checks that a service works. Run winch doc pipeline.health.",
       "keys": [
         {
           "name": "name",
@@ -3694,7 +3768,7 @@
     },
     {
       "name": "plan",
-      "summary": "show the changes and change nothing",
+      "summary": "show the changes that apply would make",
       "usage": [
         "winch plan [<pipeline>] [flags]"
       ],
@@ -3786,7 +3860,7 @@
     },
     {
       "name": "apply",
-      "summary": "show the changes, ask, then make them",
+      "summary": "make the changes after you approve the plan",
       "usage": [
         "winch apply [<pipeline>] [flags]"
       ],
@@ -3969,6 +4043,7 @@
         "winch joins the words after -- with spaces and runs them through sh -c as root, in /.",
         "Each host shows one block: the host name, then the output. Hosts with the same output and exit code share one block. A command that exits non-zero adds \"exit status N\" to its block. winch exits with code 1 when the command fails on a host.",
         "With --json, each host gives one exec event with output and exit_code.",
+        "The command stops after 600 seconds, or after --timeout. Each host then sends SIGTERM to the command, and SIGKILL 10 seconds later.",
         "Ctrl-C stops the commands. Each host sends SIGINT to the command, and SIGKILL when it still runs after 10 seconds.",
         "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel."
       ],
@@ -4006,6 +4081,12 @@
           "text": "no questions from ssh"
         },
         {
+          "name": "--timeout",
+          "value": "<seconds>",
+          "default": "600",
+          "text": "time limit of the command"
+        },
+        {
           "name": "--json",
           "value": "",
           "default": "",
@@ -4033,16 +4114,20 @@
           "command": "winch secret init"
         },
         {
-          "comment": "write a random password into the inventory",
+          "comment": "write a random password as the default of a variable",
           "command": "winch secret generate vars.monit_password"
         },
         {
-          "comment": "encrypt the content of a file",
-          "command": "winch secret encrypt < dkim.key"
+          "comment": "write the content of a file as the default of a variable",
+          "command": "winch secret encrypt vars.dkim_key < dkim.key"
         },
         {
-          "comment": "encrypt the output of a command",
+          "comment": "print the output of a command as a !secret value",
           "command": "openssl rand -hex 16 | winch secret encrypt"
+        },
+        {
+          "comment": "print the plaintext of a secret",
+          "command": "winch secret decrypt vars.monit_password"
         },
         {
           "comment": "encrypt all secrets again after a change of the recipients",
@@ -4083,66 +4168,98 @@
     },
     {
       "name": "secret generate",
-      "summary": "write a random password as a secret",
+      "summary": "make a random password as a secret",
       "usage": [
-        "winch secret generate vars.<name> [flags]"
+        "winch secret generate [<path>]"
       ],
       "description": [
-        "Generate makes a random password of 32 letters and digits, encrypts it for the recipients in winch.yaml, and writes it as a !secret value into the inventory.",
-        "It writes into the vars of the group all, or of the host of --host. The file keeps its comments and layout.",
-        "Something in the project must read the variable. The variable must not be in those vars yet, also not as null."
+        "Generate makes a random password of 32 letters and digits and encrypts it for the recipients in winch.yaml. With a path, it writes the !secret value at the path; without one, it prints it. It never prints the password.",
+        "A path names a place in the project, with keys joined by \".\". vars.x is the default of x in winch.yaml, and recipes.mail.vars.mail_x a default in the recipe mail. groups.all.vars.x and hosts.web1.vars.x are in the inventory at the top of winch.yaml, and inventories.prod.groups.all.vars.x is in the inventory prod. A path can go on into a map variable, such as vars.users.alice, but not into a list. A key with dots or \"[\" stands in brackets and double quotes, such as vars.dkim_keys[\"acme.com\"].",
+        "The command replaces the value at the path, or adds a missing path with the maps it needs. The inventory, the recipe, the host, and the group must exist; the group all always exists. Something in the project must read the variable, and a variable has one default. The file keeps its comments and layout."
       ],
       "examples": [
         {
-          "comment": "write a password into the vars of the group all",
+          "comment": "write a password as the default of a variable in winch.yaml",
           "command": "winch secret generate vars.monit_password"
         },
         {
           "comment": "write a password into the vars of one host",
-          "command": "winch secret generate vars.db_password --host db1.acme.com"
+          "command": "winch secret generate hosts.db1.acme.com.vars.db_password"
         },
         {
           "comment": "write a password into the inventory production",
-          "command": "winch secret generate vars.db_password --inventory production"
-        }
-      ],
-      "flags": [
-        {
-          "name": "--inventory",
-          "value": "<name>",
-          "default": "inventory in winch.yaml",
-          "text": "inventory to write"
+          "command": "winch secret generate inventories.production.groups.all.vars.db_password"
         },
         {
-          "name": "--host",
-          "value": "<name>",
-          "default": "the group all",
-          "text": "host whose vars get the value"
+          "comment": "print a password as a !secret value",
+          "command": "winch secret generate"
         }
       ],
+      "flags": [],
       "see": [
         "winch doc secrets"
       ]
     },
     {
       "name": "secret encrypt",
-      "summary": "encrypt a value from stdin",
+      "summary": "encrypt a value from stdin or a prompt as a secret",
       "usage": [
-        "winch secret encrypt"
+        "winch secret encrypt [<path>]"
       ],
       "description": [
-        "Encrypt reads a value from stdin, encrypts it for the recipients in winch.yaml, and prints it as a !secret value for a variable.",
+        "Encrypt reads a value from stdin and encrypts it for the recipients in winch.yaml. With a path, it writes the !secret value at the path; without one, it prints it.",
+        "When stdin is a terminal, encrypt asks for one line twice and does not show what you type. When the two values differ, it writes nothing.",
         "A value of one line loses its trailing newline. A value of more lines stays as it is.",
-        "A !secret stands only in a variable value: in inventory vars, and in the defaults of winch.yaml and of recipes."
+        "A path names a place in the project, with keys joined by \".\". vars.x is the default of x in winch.yaml, and recipes.mail.vars.mail_x a default in the recipe mail. groups.all.vars.x and hosts.web1.vars.x are in the inventory at the top of winch.yaml, and inventories.prod.groups.all.vars.x is in the inventory prod. A path can go on into a map variable, such as vars.users.alice, but not into a list. A key with dots or \"[\" stands in brackets and double quotes, such as vars.dkim_keys[\"acme.com\"].",
+        "The command replaces the value at the path, or adds a missing path with the maps it needs. The inventory, the recipe, the host, and the group must exist; the group all always exists. Something in the project must read the variable, and a variable has one default. The file keeps its comments and layout."
       ],
       "examples": [
         {
-          "comment": "encrypt the content of a file",
-          "command": "winch secret encrypt < dkim.key"
+          "comment": "type a password and write it as the default of a variable",
+          "command": "winch secret encrypt vars.db_password"
         },
         {
-          "comment": "encrypt the output of a command",
+          "comment": "write the content of a file as the default of a variable",
+          "command": "winch secret encrypt vars.dkim_key < dkim.key"
+        },
+        {
+          "comment": "write a key into a map variable keyed by domain",
+          "command": "winch secret encrypt 'vars.dkim_keys[\"acme.com\"]' < acme.com.key"
+        },
+        {
+          "comment": "print the output of a command as a !secret value",
           "command": "openssl rand -hex 16 | winch secret encrypt"
+        }
+      ],
+      "flags": [],
+      "see": [
+        "winch doc secrets"
+      ]
+    },
+    {
+      "name": "secret decrypt",
+      "summary": "print the plaintext of a secret",
+      "usage": [
+        "winch secret decrypt [<path>]"
+      ],
+      "description": [
+        "Decrypt prints the plaintext of the !secret at the path, or of a !secret value on stdin, with or without the tag. It prints nothing else, also no newline after the plaintext. It is the only command whose output holds a secret.",
+        "A path names a place in the project, with keys joined by \".\". vars.x is the default of x in winch.yaml, and recipes.mail.vars.mail_x a default in the recipe mail. groups.all.vars.x and hosts.web1.vars.x are in the inventory at the top of winch.yaml, and inventories.prod.groups.all.vars.x is in the inventory prod. A path can go on into a map variable, such as vars.users.alice, but not into a list. A key with dots or \"[\" stands in brackets and double quotes, such as vars.dkim_keys[\"acme.com\"].",
+        "A path to a map or to a value that is not a !secret is an error.",
+        "winch reads the age key from the stdout of the command in WINCH_AGE_IDENTITY_CMD, which runs through sh -c. Without it, winch reads the file that WINCH_AGE_KEY names, or else ~/.config/winch/age.key. Both variables set is an error."
+      ],
+      "examples": [
+        {
+          "comment": "print the plaintext of the default of a variable",
+          "command": "winch secret decrypt vars.monit_password"
+        },
+        {
+          "comment": "print the plaintext of a secret in the vars of one host",
+          "command": "winch secret decrypt hosts.db1.acme.com.vars.db_password"
+        },
+        {
+          "comment": "print the plaintext of a !secret value",
+          "command": "echo '!secret YWdl...' | winch secret decrypt"
         }
       ],
       "flags": [],
