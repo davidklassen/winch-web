@@ -109,6 +109,16 @@
               "keys": []
             },
             {
+              "name": "ssh_config",
+              "path": "project.ssh_config",
+              "type": "string",
+              "default": "",
+              "required": false,
+              "line": "SSH config file for ssh -F",
+              "text": "Path of an SSH config file, relative to the project directory. winch passes it to every ssh with -F, and ssh reads it instead of ~/.ssh/config. The file can have the line Include ~/.ssh/config. Run winch doc remote.",
+              "keys": []
+            },
+            {
               "name": "vars",
               "path": "project.vars",
               "type": "map",
@@ -1199,8 +1209,8 @@
             },
             {
               "name": "sqlquote",
-              "line": "sqlquote s: s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\.",
-              "text": "sqlquote s: s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\. For PostgreSQL, write E before it. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
+              "line": "sqlquote s: s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\.",
+              "text": "sqlquote s: s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
             },
             {
               "name": "title",
@@ -1664,8 +1674,8 @@
             },
             {
               "name": "sqlquote",
-              "line": "sqlquote(s): s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\.",
-              "text": "sqlquote(s): s as a MariaDB string literal: in single quotes, each ' as '', each \\ as \\\\. For PostgreSQL, write E before it. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
+              "line": "sqlquote(s): s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\.",
+              "text": "sqlquote(s): s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
             },
             {
               "name": "string",
@@ -1809,7 +1819,7 @@
                   "type": "string",
                   "default": "",
                   "required": false,
-                  "line": "CPU architecture",
+                  "line": "CPU architecture: amd64 or arm64",
                   "text": "CPU architecture: amd64 or arm64.",
                   "keys": []
                 }
@@ -1988,7 +1998,7 @@
               "ordered": false,
               "items": [
                 "winch warns about text in project files that looks like a private key or a token, and is not a !secret.",
-                "winch warns about a file step whose content reads a secret and whose mode is missing or lets others read it.",
+                "winch warns about a file step whose content reads a secret and whose mode is missing or lets others read it. Inside a range, only the fields of the element that the body reads count, such as .name.",
                 "A !secret in a certbot hook is an error: certbot stores its hooks in a file that other users can read. A hook that reads a secret through match() fails the host."
               ]
             },
@@ -2109,6 +2119,7 @@
                 "A step that stops, disables, masks, or removes the SSH server fails: \"this cuts off winch's access\". So does a pkg or upgrade step that removes sudo while the login user is not root, or the package of the login user's shell.",
                 "Some steps get the rollback of confirm_access without it: a change of the login user's home directory, ~/.ssh, or any file in ~/.ssh, such as authorized_keys or rc, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
                 "A step that changes sshd's config while ssh.socket is active, as on Ubuntu, restarts ssh.socket. It gets the same protection. sshd's config includes the unit files and drop-ins of ssh.service and ssh.socket in /etc/systemd/system.",
+                "Otherwise, a change of sshd's config gets no protection of its own. The plan warns at a step that loads the changed config without an access check, such as a restart of sshd without confirm_access, a reboot, or an upgrade of openssh-server. A then command such as systemctl restart ssh counts too, also on a step with confirm_access. The plan also warns when no later reload of sshd with confirm_access can roll the change back. Reload sshd in a service handler with confirm_access: true.",
                 "After the last step of a host that changed something, winch checks the access once more. When it fails, the host fails, and nothing rolls back."
               ]
             },
@@ -2260,6 +2271,14 @@
             {
               "type": "code",
               "text": "# ~/.ssh/config\nHost *.acme.com\n  Port 2222\n  IdentityFile ~/.ssh/acme_ed25519\n\n# inventories/production.yaml\nhosts:\n  web1.acme.com:\n    address: 192.0.2.10\n    user: admin\n\n# winch logs in to 192.0.2.10 on port 2222 as admin,\n# with the key ~/.ssh/acme_ed25519.\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "ssh_config in winch.yaml names another SSH config file, relative to the project directory. winch passes it with -F to every ssh it runs: the sessions, the access checks, and each hop of a ProxyJump. ssh then reads this file instead of ~/.ssh/config. Use it for the SSH config that a tool such as Lima or Vagrant writes. To keep ~/.ssh/config, include it:"
+            },
+            {
+              "type": "code",
+              "text": "# winch.yaml\nname: acme\nssh_config: ssh_config\n\n# ssh_config\nInclude ~/.ssh/config\nInclude ~/.lima/default/ssh.config\n"
             },
             {
               "type": "paragraph",
@@ -2661,7 +2680,7 @@
     {
       "name": "debconf",
       "line": "set a debconf answer",
-      "body": "Only the scripts of a package read its answers. Put the step before the pkg step that installs the package, also when the package comes in as a dependency.",
+      "body": "Only the scripts of a package read its answers. Put the step before the pkg step that installs the package, also when the package comes in as a dependency.\n\nAfter a package loaded the question, as at its install, the check compares type with the type of the question. A select or multiselect value must be one of the choices of the question. A type that differs, or a value that is not a choice, fails the check.",
       "keys": [
         {
           "name": "package",
@@ -3013,7 +3032,7 @@
     {
       "name": "firewall",
       "line": "filter incoming traffic",
-      "body": "The step owns the nftables table inet winch and changes no other table. The rules of Docker, fail2ban, or /etc/nftables.conf stay. Its input chain filters traffic to the host. A host has at most one firewall step in a run.\n\nThe step needs nft: install the package nftables in an earlier pkg step.\n\nEvery change gets the access check and the rollback of confirm_access. When the access check fails after the new rules load, the old rules come back.",
+      "body": "The step owns the nftables table inet winch and changes no other table. The rules of Docker, fail2ban, or /etc/nftables.conf stay. Its input chain filters traffic to the host. Traffic that Docker forwards to a container passes the forward hook, so a port that Docker publishes stays open. Publish the port on 127.0.0.1 when only a local proxy reaches the container. A host has at most one firewall step in a run.\n\nThe step needs nft: install the package nftables in an earlier pkg step.\n\nEvery change gets the access check and the rollback of confirm_access. When the access check fails after the new rules load, the old rules come back.\n\nThe check fails when a file of the step on the host, such as /etc/winch/firewall.nft, is larger than 1 MiB.",
       "keys": [
         {
           "name": "allow",
@@ -3021,8 +3040,8 @@
           "type": "list of maps",
           "default": "",
           "required": false,
-          "line": "accepted traffic; the host drops the rest",
-          "text": "Accepted traffic; the host drops the rest. It always accepts established and related traffic, loopback, ICMP echo requests, the ICMPv6 types that IPv6 needs, and DHCP replies. It drops invalid packets.",
+          "line": "accepted traffic to the host; the host drops the rest",
+          "text": "Accepted traffic to the host; the host drops the rest. It always accepts established and related traffic, loopback, ICMP echo requests, the ICMPv6 types that IPv6 needs, and DHCP replies. It drops invalid packets.",
           "keys": [
             {
               "name": "tcp",
@@ -3120,7 +3139,7 @@
     {
       "name": "hostname",
       "line": "set the host name",
-      "body": "",
+      "body": "The check compares name with the static name in /etc/hostname and with the running name. When one of them differs, the step sets the name.",
       "keys": [
         {
           "name": "name",
@@ -3330,7 +3349,7 @@
     {
       "name": "repo",
       "line": "manage an apt source",
-      "body": "",
+      "body": "The check fails when the source file or the key file on the host is larger than 1 MiB.",
       "keys": [
         {
           "name": "name",
@@ -3474,7 +3493,7 @@
     {
       "name": "unit",
       "line": "manage a systemd unit file",
-      "body": "A change of the file, also of its owner or mode, runs systemctl daemon-reload. daemon-reload does not restart a running unit. A handler with restarted: true does.",
+      "body": "A change of the file, also of its owner or mode, runs systemctl daemon-reload. daemon-reload does not restart a running unit. A handler with restarted: true does.\n\nThe step also checks an ok file: systemd can still need a reload, as after a run that wrote the file and then failed. Then the step runs daemon-reload as a change, so its handlers run. A template unit, such as app@.service, skips this check.",
       "keys": [
         {
           "name": "name",
@@ -3619,7 +3638,7 @@
           "default": "",
           "required": false,
           "line": "crypt hash, usually a !secret",
-          "text": "Crypt hash, usually a !secret, such as one from mkpasswd -m yescrypt. ! or * alone locks the password. Without password, the password of a new user is locked.",
+          "text": "Crypt hash, usually a !secret, such as one from mkpasswd -m yescrypt or openssl passwd -6. ! or * alone locks the password. Without password, the password of a new user is locked.",
           "keys": []
         },
         {
@@ -3663,7 +3682,9 @@
       "usage": [
         "winch <command> [arguments] [flags]"
       ],
-      "description": [],
+      "description": [
+        "In every command, -- ends the flags: the words after it are arguments, also when they start with \"-\"."
+      ],
       "examples": [
         {
           "comment": "check the project without contacting a host",
@@ -4040,7 +4061,8 @@
       "description": [
         "Exec runs a shell command on the hosts of the pattern, in parallel, and shows its output. It makes no plan and asks no question.",
         "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion.",
-        "winch joins the words after -- with spaces and runs them through sh -c as root, in /.",
+        "winch joins the words after -- with spaces and runs them through sh -c as root, in /, with stdin from /dev/null.",
+        "When the project has secrets, exec needs the age key. It decrypts the secrets, so that its output hides them.",
         "Each host shows one block: the host name, then the output. Hosts with the same output and exit code share one block. A command that exits non-zero adds \"exit status N\" to its block. winch exits with code 1 when the command fails on a host.",
         "With --json, each host gives one exec event with output and exit_code.",
         "The command stops after 600 seconds, or after --timeout. Each host then sends SIGTERM to the command, and SIGKILL 10 seconds later.",
