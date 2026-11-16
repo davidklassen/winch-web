@@ -25,8 +25,8 @@ recipes/nginx/
 
 ```
 <!doctype html>
-<title>{{ .vars.domain }}</title>
-<p>Welcome to {{ .vars.domain }}.</p>
+<title>{{ vars.domain }}</title>
+<p>Welcome to {{ vars.domain }}.</p>
 ```
 
 `templates/site.tmpl` is the site config of nginx:
@@ -35,8 +35,8 @@ recipes/nginx/
 server {
 	listen 80;
 	listen [::]:80;
-	server_name {{ .vars.domain }};
-	root /var/www/{{ .vars.domain }};
+	server_name {{ vars.domain }};
+	root /var/www/{{ vars.domain }};
 }
 ```
 
@@ -50,12 +50,12 @@ steps:
 
   - name: Write the home page
     file:
-      path: !tpl /var/www/{{ .vars.domain }}/index.html
+      path: !tpl /var/www/{{ vars.domain }}/index.html
       template: index.html.tmpl
 
   - name: Configure the site
     file:
-      path: !tpl /etc/nginx/sites-enabled/{{ .vars.domain }}
+      path: !tpl /etc/nginx/sites-enabled/{{ vars.domain }}
       template: site.tmpl
       validate: nginx -t
     notify: reload

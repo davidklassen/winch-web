@@ -431,7 +431,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A failed host takes no part in later stages. The other hosts go on. A new run is the resume: steps that already succeeded check as ok."
+              "text": "When a host fails, the other running hosts of the stage finish it. A failure in a stage, also in a step, a health gate, or the plan, stops the pipeline after that stage. A host that failed in the plan takes no part in any stage, so its failure counts at the first stage that matches it. No later stage starts, and each of its hosts with a change in the plan fails, such as with \"not started: etcd1 failed in stage etcd\". To run the later stages without a failed host, leave it out with --hosts. A new run is the resume: steps that already succeeded check as ok."
             },
             {
               "type": "example",
@@ -494,7 +494,7 @@
                       "default": "",
                       "required": true,
                       "line": "must exit 0",
-                      "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.",
+                      "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.\n\nIt can be a !tpl. The template reads the data of the host, as a step of the stage does, without the vars of a recipe step.",
                       "keys": []
                     },
                     {
@@ -577,7 +577,7 @@
                   "default": "",
                   "required": true,
                   "line": "must exit 0",
-                  "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.",
+                  "text": "Must exit 0. winch runs it on the host once per second until it exits 0, then keeps running it for stable seconds. A failed run starts the wait again. An exit of 126 or 127, when sh cannot find or run the command, fails the gate at once.\n\nIt can be a !tpl. The template reads the data of the host, as a step of the stage does, without the vars of a recipe step.",
                   "keys": []
                 },
                 {
@@ -667,7 +667,7 @@
             },
             {
               "type": "example",
-              "text": "# recipes/nginx/recipe.yaml\nrequire:\n  - !expr facts.os.id in [\"debian\", \"ubuntu\"]\nvars:\n  nginx_port: 80\nsteps:\n  - pkg:\n      name: nginx\n  - name: Configure the site\n    file:\n      path: /etc/nginx/sites-enabled/default\n      template: site.tmpl\n      validate: nginx -t\n    notify: reload\n  - service:\n      name: nginx\n      running: true\n      enabled: true\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n\n# recipes/nginx/templates/site.tmpl\nserver {\n    listen {{ .vars.nginx_port }};\n}\n\n# winch.yaml\nname: acme\nhosts:\n  web1.acme.com: {}\nsteps:\n  - recipe: nginx\n    vars:\n      nginx_port: 8080\n"
+              "text": "# recipes/nginx/recipe.yaml\nrequire:\n  - !expr facts.os.id in [\"debian\", \"ubuntu\"]\nvars:\n  nginx_port: 80\nsteps:\n  - pkg:\n      name: nginx\n  - name: Configure the site\n    file:\n      path: /etc/nginx/sites-enabled/default\n      template: site.tmpl\n      validate: nginx -t\n    notify: reload\n  - service:\n      name: nginx\n      running: true\n      enabled: true\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n\n# recipes/nginx/templates/site.tmpl\nserver {\n    listen {{ vars.nginx_port }};\n}\n\n# winch.yaml\nname: acme\nhosts:\n  web1.acme.com: {}\nsteps:\n  - recipe: nginx\n    vars:\n      nginx_port: 8080\n"
             }
           ],
           "keys": [
@@ -736,7 +736,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Any module argument can be a template or an expression, and so can then. when takes an expression. loop takes a list or an expression."
+              "text": "Any module argument can be a template or an expression, and so can then. The command of a health gate can be a template. when takes an expression. loop takes a list or an expression."
             },
             {
               "type": "heading",
@@ -764,7 +764,7 @@
             },
             {
               "type": "example",
-              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nvars:\n  sites: [blog, shop]\nsteps:\n  - name: Install nginx\n    pkg:\n      name: nginx\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"# {{ .item }}\\n\"\n    when: !expr len(vars.sites) > 0\n    loop: !expr vars.sites\n    then: nginx -t\n    notify: reload\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n"
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nvars:\n  sites: [blog, shop]\nsteps:\n  - name: Install nginx\n    pkg:\n      name: nginx\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ item }}.conf\n      content: !tpl \"# {{ item }}\\n\"\n    when: !expr len(vars.sites) > 0\n    loop: !expr vars.sites\n    then: nginx -t\n    notify: reload\nhandlers:\n  reload:\n    - service:\n        name: nginx\n        reloaded: true\n"
             }
           ],
           "keys": [
@@ -835,7 +835,7 @@
               "default": "false",
               "required": false,
               "line": "access check with rollback, for a service step",
-              "text": "Access check with rollback, for a service step. Only a service step can use it, in steps or in handlers. A firewall step gets the same check without it.\n\nBefore the step, winch keeps the old state of each path that the changed steps of the recipe wrote or removed in this run. It starts a 60-second rollback timer in a process of its own.\n\nAfter the step, winch runs the access check: it opens a new SSH connection and runs a command, through sudo -n when the login user is not root. It tries twice, 5 seconds apart.\n\nWhen both tries fail, winch puts back the old files and runs daemon-reload after a unit file. It reverses a start or a stop of the step, and reloads or restarts the unit again. The host fails with the error \"the access check failed: <error>; the old files are back\". When the SSH connection ends first, winch rolls back as it ends. When the helper is gone, the timer rolls back.\n\nWhen a run ends before a notified handler with confirm_access ran, winch puts back the files of that handler at once. The next run applies the change again.\n\nA rollback puts back files only. It does not undo a change of a user or a group.",
+              "text": "Access check with rollback, for a service step. Only a service step can use it, in steps or in handlers. A firewall step gets the same check without it.\n\nBefore the step, winch keeps the old state of each path that the changed steps of the recipe wrote or removed in this run. It starts a 60-second rollback timer in a process of its own.\n\nAfter the step, winch runs the access check: it opens a new SSH connection and runs a command, through sudo -n when the login user is not root. It tries twice, 5 seconds apart.\n\nWhen both tries fail, winch puts back the old files and runs daemon-reload after a unit file. It reverses a start or a stop of the step, and reloads or restarts the unit again. The host fails with the error \"the access check failed: <error>; the old files are back\". When the SSH connection ends first, winch rolls back as it ends. When the helper is gone, the timer rolls back.\n\nWhen a run ends before a notified handler with confirm_access ran, winch puts back the files of the steps that notified it. The files of the other steps stay. Apply prints put back <paths>: the handler <recipe>.<handler> did not run. The next run applies the change again.\n\nA rollback puts back files only. It does not undo a change of a user or a group.",
               "keys": []
             },
             {
@@ -878,6 +878,14 @@
             {
               "type": "code",
               "text": "# winch.yaml\nname: demo\nhosts:\n  web1.example.com: {}\nsteps:\n  - recipe: nginx\n  - file:\n      path: /etc/nginx/conf.d/gzip.conf\n      content: \"gzip on;\\n\"\n    notify: nginx.reload\nrecipes:\n  nginx:\n    steps:\n      - pkg:\n          name: nginx\n    handlers:\n      reload:\n        - service:\n            name: nginx\n            reloaded: true\n\n# A change of gzip.conf reloads nginx once, at the end of the stage.\n"
+            },
+            {
+              "type": "paragraph",
+              "text": "A step cannot notify a handler of another stage. To restart a service when a downloaded binary changes, put the download in the stage or the recipe of the service, and notify its handler."
+            },
+            {
+              "type": "code",
+              "text": "# recipes/app/recipe.yaml\nsteps:\n  - download:\n      url: https://example.com/releases/app-1.4.2-linux-amd64\n      sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n      path: /usr/local/bin/app\n      mode: \"0755\"\n    notify: restart\nhandlers:\n  restart:\n    - service:\n        name: app\n        restarted: true\n\n# A new app binary restarts app after the last step of the recipe.\n"
             },
             {
               "type": "heading",
@@ -954,7 +962,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A default is declared once: in vars of winch.yaml, or in vars of the recipe that owns it. A recipe's own defaults start with the recipe name and _. A default can be a !secret, a template, or an expression. It sees vars, host, and facts, but not match(). A cycle between defaults is an error."
+              "text": "A default is declared once: in vars of winch.yaml, or in vars of the recipe that owns it. A recipe's own defaults start with the recipe name and _. A default can be a !secret, a template, or an expression. It sees vars, facts, host, hosts, and match(). A cycle between defaults is an error. A default that reads vars.x of another host depends on x, so a cycle through other hosts is an error too."
             },
             {
               "type": "heading",
@@ -970,7 +978,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A variable name has lowercase letters, digits, and _. A read names the variable: vars.domain, .vars.domain, $.vars.domain, or host.vars.domain. Any other read of the whole map, such as keys(vars) or range .vars, is an error. A map variable holds data that a step reads by key: vars.users[item]. host.vars holds the variables of the host without the vars of a recipe step."
+              "text": "A variable name has lowercase letters, digits, and _. A read names the variable: vars.domain or host.vars.domain. Any other read of the whole map, such as keys(vars) or for x in vars, is an error. A map variable holds data that a step reads by key: vars.users[item]. host.vars holds the variables of the host without the vars of a recipe step."
             },
             {
               "type": "heading",
@@ -982,7 +990,7 @@
             },
             {
               "type": "example",
-              "text": "# winch.yaml\nname: demo\nhosts:\n  mail.acme.com:\n    vars:\n      relay_host: smtp.acme.com\n  web1.acme.com: {}\ngroups:\n  all:\n    vars:\n      admin_email: ops@acme.com\nvars:\n  domain: acme.com\n  relay_host: \"\"\nsteps:\n  - recipe: motd\n    vars:\n      motd_text: Managed by winch\nrecipes:\n  motd:\n    vars:\n      motd_text: Welcome\n    steps:\n      - file:\n          path: /etc/motd\n          content: !tpl \"{{ .vars.motd_text }} on {{ .vars.domain }}\\n\"\n      - file:\n          path: /etc/admin_email\n          content: !tpl \"{{ .vars.admin_email }}\\n\"\n      - file:\n          path: /etc/relay_host\n          content: !tpl \"{{ .vars.relay_host }}\\n\"\n        when: !expr vars.relay_host != \"\"\n"
+              "text": "# winch.yaml\nname: demo\nhosts:\n  mail.acme.com:\n    vars:\n      relay_host: smtp.acme.com\n  web1.acme.com: {}\ngroups:\n  all:\n    vars:\n      admin_email: ops@acme.com\nvars:\n  domain: acme.com\n  relay_host: \"\"\nsteps:\n  - recipe: motd\n    vars:\n      motd_text: Managed by winch\nrecipes:\n  motd:\n    vars:\n      motd_text: Welcome\n    steps:\n      - file:\n          path: /etc/motd\n          content: !tpl \"{{ vars.motd_text }} on {{ vars.domain }}\\n\"\n      - file:\n          path: /etc/admin_email\n          content: !tpl \"{{ vars.admin_email }}\\n\"\n      - file:\n          path: /etc/relay_host\n          content: !tpl \"{{ vars.relay_host }}\\n\"\n        when: !expr vars.relay_host != \"\"\n"
             }
           ],
           "keys": [],
@@ -1002,7 +1010,27 @@
             },
             {
               "type": "paragraph",
-              "text": "The !tpl tag marks a template, a Go text/template. It builds text, such as a path or a line. The template files of a recipe use the same language."
+              "text": "The !tpl tag marks a template. It builds text, such as a path or a line. The template files of a recipe use the same language. {{ expression }} prints the value of an expression. Templates and expressions use one language, with the same data and functions; run winch doc expressions."
+            },
+            {
+              "type": "heading",
+              "text": "Blocks"
+            },
+            {
+              "type": "paragraph",
+              "text": "if, else if, and else choose a part. for name in list repeats a part for each element of a list, with the element under that name. end closes a block: {{ for admin in vars.admins }}{{ if admin != \"root\" }}{{ admin }} {{ end }}{{ end }}."
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "items": [
+                "{{- removes the white space and line ends before the action, and -}} those after it. The - needs a space after it, or before it in -}}.",
+                "for takes a list or a map. A map is looped through in the sorted order of its keys, with the value under the name. A loop over a map whose keys cannot be sorted fails.",
+                "for key, value in ... also names the key of a map, or the index of a list from 0: {{ for name, user in vars.users }}{{ name }}={{ user.uid }} {{ end }}.",
+                "A loop name that hides a name of the data, such as vars or item, is an error.",
+                "if takes true or false.",
+                "{{ /* text */ }} is a comment and prints nothing."
+              ]
             },
             {
               "type": "heading",
@@ -1010,32 +1038,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A template reads these names with a leading dot:"
-            },
-            {
-              "type": "table",
-              "rows": [
-                [
-                  ".vars",
-                  "the variables of the host, with the vars of the recipe step"
-                ],
-                [
-                  ".facts",
-                  "the facts of the host; run winch doc facts"
-                ],
-                [
-                  ".host",
-                  "name, short, address, groups, and vars of the host; address is the name when the host has no address"
-                ],
-                [
-                  ".item",
-                  "the current element in a step with loop"
-                ]
-              ]
-            },
-            {
-              "type": "paragraph",
-              "text": "Inside range, \".\" is the element. $.vars reads the variables."
+              "text": "A template reads vars, facts, host, hosts, item, and match(), as an expression does."
             },
             {
               "type": "heading",
@@ -1043,23 +1046,15 @@
             },
             {
               "type": "paragraph",
-              "text": "Any module argument can be a template or an expression, and so can then."
+              "text": "Any module argument can be a template or an expression, and so can then. The command of a health gate can be a template."
             },
             {
               "type": "heading",
-              "text": "Functions and actions"
+              "text": "Values"
             },
             {
               "type": "paragraph",
-              "text": "A function takes its arguments after its name, separated by spaces: {{ join .vars.names \", \" }}. Templates also have the actions of Go's text/template: if, else, range, with, define, template, block, break, and continue, and the variables $x := value."
-            },
-            {
-              "type": "heading",
-              "text": "Missing values"
-            },
-            {
-              "type": "paragraph",
-              "text": "A template that reads a missing map key fails. Use get for a map key that may be missing. A variable needs a value or a default; get does not read the host's own .vars. A template that prints a null value fails."
+              "text": "A list or a map prints as JSON. Printing null fails, so a missing key fails where it prints. Test a key that may be missing: {{ if peer.endpoint != nil }}Endpoint = {{ peer.endpoint }}{{ end }}."
             },
             {
               "type": "heading",
@@ -1067,15 +1062,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A value goes into a command as it is. Quote a value that must stay one word with quote. Quote a YAML value that starts with a quote, [, {, &, *, or !, or that contains \": \" or \" #\". A template that starts with {{ needs quotes."
-            },
-            {
-              "type": "heading",
-              "text": "Other hosts"
-            },
-            {
-              "type": "paragraph",
-              "text": "Templates have no match(). To list other hosts, give a recipe step a variable with an !expr that uses match(), and range over it in a template of the recipe."
+              "text": "A value goes into a command as it is. Quote a value that must stay one word with quote: {{ quote(vars.map) }}. Quote a YAML value that starts with a quote, [, {, &, *, or !, or that contains \": \" or \" #\". A template that starts with {{ needs quotes."
             },
             {
               "type": "heading",
@@ -1083,146 +1070,15 @@
             },
             {
               "type": "paragraph",
-              "text": "winch evaluates templates on the machine that runs winch, during the plan. They cannot read the result of a step. winch checks each one when it loads the project: an unknown name or a syntax error is an error. An error while winch evaluates one for a host fails that host. The other hosts go on."
+              "text": "winch evaluates templates on the machine that runs winch, during the plan. They cannot read the result of a step. winch checks each one when it loads the project: an unknown name, a syntax error, or a block that is not closed is an error with the line and column. An error while winch evaluates one for a host fails that host. The other hosts go on."
             },
             {
               "type": "example",
-              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.acme.com: {}\n  web2.acme.com: {}\nvars:\n  sites: [blog, shop]\n  admins: [ann, bob]\nsteps:\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ .item }}.conf\n      content: !tpl \"server_name {{ .item }}.{{ .host.short }};\\n\"\n    loop: !expr vars.sites\n  - name: List the admins\n    file:\n      path: /etc/app/admins.conf\n      content: !tpl \"admins ={{ range .vars.admins }} {{ . }}{{ end }}\\n\"\n  - name: List the other hosts\n    recipe: peers\n    vars:\n      peers_hosts: !expr filter(match(\"all\"), .name != host.name)\nrecipes:\n  peers:\n    steps:\n      - file:\n          path: /etc/peers\n          content: !tpl \"{{ range .vars.peers_hosts }}{{ .name }} {{ .address }}\\n{{ end }}\"\n"
+              "text": "# winch.yaml\nname: demo\nhosts:\n  web1.acme.com: {}\n  web2.acme.com: {}\nvars:\n  sites: [blog, shop]\n  admins: [ann, bob]\nsteps:\n  - name: Write the sites\n    file:\n      path: !tpl /etc/nginx/sites-enabled/{{ item }}.conf\n      content: !tpl \"server_name {{ item }}.{{ host.short }};\\n\"\n    loop: !expr vars.sites\n  - name: List the admins\n    file:\n      path: /etc/app/admins.conf\n      content: !tpl \"admins ={{ for admin in vars.admins }} {{ admin }}{{ end }}\\n\"\n  - name: List the other hosts\n    file:\n      path: /etc/peers\n      content: !tpl \"{{ for peer in match(\\\"all\\\") }}{{ if peer.name != host.name }}{{ peer.name }} {{ peer.facts.net.ipv4 }}\\n{{ end }}{{ end }}\"\n"
             }
           ],
           "keys": [],
-          "functions": [
-            {
-              "name": "and",
-              "line": "and x y: the first empty argument, or the last argument.",
-              "text": "and x y: the first empty argument, or the last argument. In an expression, and is an operator."
-            },
-            {
-              "name": "call",
-              "line": "call f args: the result of the function f.",
-              "text": "call f args: the result of the function f. Project data holds no functions."
-            },
-            {
-              "name": "eq",
-              "line": "eq a b: true when a equals b.",
-              "text": "eq a b: true when a equals b. With more arguments, true when a equals any of them. In an expression, use ==."
-            },
-            {
-              "name": "ge",
-              "line": "ge a b: true when a >= b.",
-              "text": "ge a b: true when a >= b."
-            },
-            {
-              "name": "get",
-              "line": "get m key: the value of key in the map m, or nothing when m has no such key.",
-              "text": "get m key: the value of key in the map m, or nothing when m has no such key. It reads a key that a map may leave out: {{ with get . \"endpoint\" }}Endpoint = {{ . }}{{ end }}. It does not read the host's own .vars: a variable that may have no value needs a default."
-            },
-            {
-              "name": "gt",
-              "line": "gt a b: true when a > b.",
-              "text": "gt a b: true when a > b."
-            },
-            {
-              "name": "has",
-              "line": "has list v: true when list contains v.",
-              "text": "has list v: true when list contains v. In an expression, use v in list."
-            },
-            {
-              "name": "html",
-              "line": "html s: s with the special characters of HTML escaped.",
-              "text": "html s: s with the special characters of HTML escaped."
-            },
-            {
-              "name": "index",
-              "line": "index x k: the element of the map or the list x at the key or the index k.",
-              "text": "index x k: the element of the map or the list x at the key or the index k. More keys read deeper. A missing map key is an error. Use get for a key that may be missing."
-            },
-            {
-              "name": "join",
-              "line": "join list sep: the elements of list as text, joined with sep.",
-              "text": "join list sep: the elements of list as text, joined with sep."
-            },
-            {
-              "name": "js",
-              "line": "js s: s escaped for a JavaScript string.",
-              "text": "js s: s escaped for a JavaScript string."
-            },
-            {
-              "name": "json",
-              "line": "json v: v as JSON on one line.",
-              "text": "json v: v as JSON on one line. Map keys are in sorted order, and non-ASCII characters stay UTF-8. The output is also a valid YAML value, so it writes a string into a JSON or a YAML file: \"data-root\": {{ json .vars.docker_root }}."
-            },
-            {
-              "name": "le",
-              "line": "le a b: true when a <= b.",
-              "text": "le a b: true when a <= b."
-            },
-            {
-              "name": "len",
-              "line": "len x: the length of a string, a list, or a map.",
-              "text": "len x: the length of a string, a list, or a map."
-            },
-            {
-              "name": "lt",
-              "line": "lt a b: true when a < b.",
-              "text": "lt a b: true when a < b."
-            },
-            {
-              "name": "ne",
-              "line": "ne a b: true when a does not equal b.",
-              "text": "ne a b: true when a does not equal b."
-            },
-            {
-              "name": "not",
-              "line": "not x: true when x is empty or false.",
-              "text": "not x: true when x is empty or false. In an expression, not and ! are operators."
-            },
-            {
-              "name": "or",
-              "line": "or x y: the first argument that is not empty, or the last argument.",
-              "text": "or x y: the first argument that is not empty, or the last argument. In an expression, or is an operator."
-            },
-            {
-              "name": "print",
-              "line": "print args: the arguments as text, as Go's fmt.Sprint gives them.",
-              "text": "print args: the arguments as text, as Go's fmt.Sprint gives them."
-            },
-            {
-              "name": "printf",
-              "line": "printf format args: the arguments formatted as Go's fmt.Sprintf does: {{ printf \"%05d\" .vars.uid }}.",
-              "text": "printf format args: the arguments formatted as Go's fmt.Sprintf does: {{ printf \"%05d\" .vars.uid }}."
-            },
-            {
-              "name": "println",
-              "line": "println args: the arguments as text, with spaces between them and a newline at the end.",
-              "text": "println args: the arguments as text, with spaces between them and a newline at the end."
-            },
-            {
-              "name": "quote",
-              "line": "quote s: s in single quotes for sh, each ' as '\\''.",
-              "text": "quote s: s in single quotes for sh, each ' as '\\''. A value goes into a command as it is. Quote a value that must stay one word: then: !tpl \"postmap {{ quote .vars.map }}\"."
-            },
-            {
-              "name": "slice",
-              "line": "slice x i j: the part of the string or the list x from the index i up to j.",
-              "text": "slice x i j: the part of the string or the list x from the index i up to j. In an expression, use x[i:j]."
-            },
-            {
-              "name": "sqlquote",
-              "line": "sqlquote s: s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\.",
-              "text": "sqlquote s: s as a string literal for MariaDB, or for PostgreSQL with E before it: in single quotes, each ' as '', each \\ as \\\\. It assumes the default SQL mode, without NO_BACKSLASH_ESCAPES, and a UTF-8 client."
-            },
-            {
-              "name": "title",
-              "line": "title s: s with the first letter of each word in upper case.",
-              "text": "title s: s with the first letter of each word in upper case."
-            },
-            {
-              "name": "urlquery",
-              "line": "urlquery s: s escaped for the query of a URL.",
-              "text": "urlquery s: s escaped for the query of a URL."
-            }
-          ]
+          "functions": []
         },
         {
           "name": "expressions",
@@ -1238,7 +1094,7 @@
             },
             {
               "type": "paragraph",
-              "text": "The !expr tag marks an expression in the language of expr (expr-lang.org). Its result keeps its type: a list, a number, a boolean, a map, or a string."
+              "text": "The !expr tag marks an expression in the language of expr (expr-lang.org). Its result keeps its type: a list, a number, a boolean, a map, or a string. Templates use the same language in {{ }}; run winch doc templates."
             },
             {
               "type": "heading",
@@ -1246,7 +1102,7 @@
             },
             {
               "type": "paragraph",
-              "text": "An expression reads these names without a leading dot:"
+              "text": "An expression reads these names:"
             },
             {
               "type": "table",
@@ -1261,7 +1117,11 @@
                 ],
                 [
                   "host",
-                  "name, short, address, groups, and vars of the host; address is the name when the host has no address"
+                  "name, short, address, groups, vars, and facts of the host; address is the name when the host has no address"
+                ],
+                [
+                  "hosts",
+                  "every host of the inventory, in inventory order, each with the fields of host"
                 ],
                 [
                   "item",
@@ -1269,13 +1129,13 @@
                 ],
                 [
                   "match(p)",
-                  "the hosts that match the host pattern p, with the fields of host"
+                  "the hosts of hosts that match the host pattern p"
                 ]
               ]
             },
             {
               "type": "paragraph",
-              "text": "match(p) reads the inventory, not the --hosts selection. A host from match() has only the vars that need no facts. A default cannot use match()."
+              "text": "hosts and match(p) read the inventory, not the --hosts selection. A host from them has all its variables, computed with its own facts, without the vars of a recipe step, and its facts. The plan reads the facts of each host that a read of hosts or match() can reach, also of a host outside --hosts. When winch cannot read them, each host that reads them fails: read the facts of <host>: <error>. The other hosts go on."
             },
             {
               "type": "heading",
@@ -1283,7 +1143,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Any module argument can be an expression or a template, and so can then. when takes an expression. loop takes a list or an expression."
+              "text": "Any module argument can be an expression or a template, and so can then. The command of a health gate can be a template. when takes an expression. loop takes a list or an expression."
             },
             {
               "type": "heading",
@@ -1549,8 +1409,8 @@
             },
             {
               "name": "join",
-              "line": "join(list, sep): the strings of list joined with sep.",
-              "text": "join(list, sep): the strings of list joined with sep."
+              "line": "join(list, sep): the strings and numbers of list joined with sep.",
+              "text": "join(list, sep): the strings and numbers of list joined with sep."
             },
             {
               "name": "json",
@@ -1589,8 +1449,8 @@
             },
             {
               "name": "match",
-              "line": "match(pattern): the hosts that match the host pattern, each with name, short, address, groups, and vars, as host has.",
-              "text": "match(pattern): the hosts that match the host pattern, each with name, short, address, groups, and vars, as host has. It reads the inventory, not the --hosts selection. A host from match() has only the vars that need no facts. It works in steps, not in defaults. A constant pattern that matches no host is a load error."
+              "line": "match(pattern): the hosts of hosts that match the host pattern, in inventory order, each with name, short, address, groups, vars, and facts, as host has.",
+              "text": "match(pattern): the hosts of hosts that match the host pattern, in inventory order, each with name, short, address, groups, vars, and facts, as host has. A constant pattern that matches no host is a load error."
             },
             {
               "name": "max",
@@ -1758,7 +1618,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Expressions read a fact as facts.os.id, and templates as {{ .facts.os.id }}. Facts are a fixed set. A read of an unknown fact is an error."
+              "text": "Expressions read a fact as facts.os.id, and templates as {{ facts.os.id }}. A host from hosts or match() has its facts too: match(\"backup\")[0].facts.ssh.ed25519. Facts are a fixed set. A read of an unknown fact is an error."
             },
             {
               "type": "code",
@@ -1770,7 +1630,7 @@
             },
             {
               "type": "paragraph",
-              "text": "winch reads the facts once per host per run, before the first step, and again after a reboot. They describe the host before the run."
+              "text": "winch reads the facts once per host per run, before the first step, and again after a reboot. It also reads the facts of each other host that hosts and match() can reach. They describe the host before the run."
             }
           ],
           "keys": [
@@ -1834,6 +1694,78 @@
               "line": "pending reboot",
               "text": "Pending reboot. It is true when /run/reboot-required exists, or when a kernel in /boot is newer than the running kernel.",
               "keys": []
+            },
+            {
+              "name": "ssh",
+              "path": "facts.ssh",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "public SSH host keys",
+              "text": "Public SSH host keys. Each is the type and the key of /etc/ssh/ssh_host_<type>_key.pub, without the comment, or \"\" when the file does not exist.",
+              "keys": [
+                {
+                  "name": "ed25519",
+                  "path": "facts.ssh.ed25519",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "Ed25519 host key, such as ssh-ed25519 AAAAC3Nz…",
+                  "text": "Ed25519 host key, such as ssh-ed25519 AAAAC3Nz…",
+                  "keys": []
+                },
+                {
+                  "name": "ecdsa",
+                  "path": "facts.ssh.ecdsa",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "ECDSA host key, such as ecdsa-sha2-nistp256 AAAAE2Vj…",
+                  "text": "ECDSA host key, such as ecdsa-sha2-nistp256 AAAAE2Vj…",
+                  "keys": []
+                },
+                {
+                  "name": "rsa",
+                  "path": "facts.ssh.rsa",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "RSA host key, such as ssh-rsa AAAAB3Nz…",
+                  "text": "RSA host key, such as ssh-rsa AAAAB3Nz…",
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "name": "net",
+              "path": "facts.net",
+              "type": "map",
+              "default": "",
+              "required": false,
+              "line": "addresses of the default routes",
+              "text": "Addresses of the default routes. Each is the source address of the host's default route of its family, or \"\" when the host has no such route. A host with several networks sets the address of the network it means in a variable.",
+              "keys": [
+                {
+                  "name": "ipv4",
+                  "path": "facts.net.ipv4",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "IPv4 address, such as 192.0.2.10",
+                  "text": "IPv4 address, such as 192.0.2.10.",
+                  "keys": []
+                },
+                {
+                  "name": "ipv6",
+                  "path": "facts.net.ipv6",
+                  "type": "string",
+                  "default": "",
+                  "required": false,
+                  "line": "IPv6 address, such as 2001:db8::10",
+                  "text": "IPv6 address, such as 2001:db8::10.",
+                  "keys": []
+                }
+              ]
             }
           ],
           "functions": []
@@ -1871,7 +1803,7 @@
               "rows": [
                 [
                   "winch secret init",
-                  "make an age key, add it to recipients"
+                  "make an age key when there is none, add it to recipients"
                 ],
                 [
                   "winch secret generate [<path>]",
@@ -1982,6 +1914,10 @@
               "text": "A variable is secret when its value is a !secret, or when its default reads a secret variable. The plan, diffs, errors, logs, and JSON show (secret) in place of a secret, also a part of a value that comes from a secret. A filter replaces each secret value in all text that winch prints, also in output from the host. The filter also hides private keys, age keys, passwords in URLs, and well-known tokens."
             },
             {
+              "type": "paragraph",
+              "text": "When apply runs a step whose content reads a secret, winch keeps a record of the file on the host. The record shows (secret) in place of each secret. A removed line that fits a line of the record shows as that line. When the file has a record, or its new content reads a secret, the diff hides every other removed line: (line hidden: may hold a secret). winch did not write such a line, or has no record of the file yet. So it cannot tell if the line holds a secret. A plain line step shows the old line that it changes, unless that line fits a line of the record."
+            },
+            {
               "type": "heading",
               "text": "Secrets in commands"
             },
@@ -2004,7 +1940,7 @@
             },
             {
               "type": "example",
-              "text": "# inventories/production.yaml\nhosts:\n  db1.acme.com: {}\ngroups:\n  all:\n    vars:\n      db_password: !secret YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB...\n\n# winch.yaml\nname: acme\nrecipients:\n  - age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p\nsteps:\n  - file:\n      path: /etc/app/db.env\n      content: !tpl \"DB_PASSWORD={{ .vars.db_password }}\\n\"\n      mode: \"0600\"\n"
+              "text": "# inventories/production.yaml\nhosts:\n  db1.acme.com: {}\ngroups:\n  all:\n    vars:\n      db_password: !secret YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB...\n\n# winch.yaml\nname: acme\nrecipients:\n  - age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p\nsteps:\n  - file:\n      path: /etc/app/db.env\n      content: !tpl \"DB_PASSWORD={{ vars.db_password }}\\n\"\n      mode: \"0600\"\n"
             }
           ],
           "keys": [],
@@ -2037,7 +1973,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Apply prints a line for each step that changes or fails, then the summary. A step that checks as ok prints nothing: a planned change that the second check finds made, an assert that passes, and a handler restart that checks as ok. The summary line of plan and of apply counts hosts, not steps."
+              "text": "Apply prints a line for each step that changes or fails, then the summary. A step that checks as ok prints nothing: a planned change that the second check finds made, and a handler restart that checks as ok. An access check that passes prints access check passed after the step or handler that started it. The access check at the end of a host prints access check after the run passed. A health gate that passes prints health passed and its command. The summary line of plan and of apply counts hosts, not steps."
             },
             {
               "type": "heading",
@@ -2064,11 +2000,11 @@
                 ],
                 [
                   "!",
-                  "a handler, or a pending then, gate, or assert that will run"
+                  "a handler, or a pending then or gate that will run"
                 ],
                 [
                   "*",
-                  "a reboot, assert, or health gate that runs during apply"
+                  "a reboot or health gate that runs during apply"
                 ]
               ]
             },
@@ -2117,7 +2053,7 @@
               "ordered": false,
               "items": [
                 "A step that stops, disables, masks, or removes the SSH server fails: \"this cuts off winch's access\". So does a pkg or upgrade step that removes sudo while the login user is not root, or the package of the login user's shell.",
-                "Some steps get the rollback of confirm_access without it: a change of the login user's home directory, ~/.ssh, or any file in ~/.ssh, such as authorized_keys or rc, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
+                "Some steps get the rollback of confirm_access without it: a change of the login user's home directory, ~/.ssh, or any file in ~/.ssh, such as authorized_keys or rc, groups added to the login user, a change of /etc/pam.d, and a change of /etc/sudoers or /etc/sudoers.d when the login user is not root. So does a cmd step whose changes key lists one of these paths, such as changes: [/etc/pam.d, /var/lib/pam] for pam-auth-update. Every firewall step gets it too. The plan marks such a step. Run winch doc step.confirm_access.",
                 "A step that changes sshd's config while ssh.socket is active, as on Ubuntu, restarts ssh.socket. It gets the same protection. sshd's config includes the unit files and drop-ins of ssh.service and ssh.socket in /etc/systemd/system.",
                 "Otherwise, a change of sshd's config gets no protection of its own. The plan warns at a step that loads the changed config without an access check, such as a restart of sshd without confirm_access, a reboot, or an upgrade of openssh-server. A then command such as systemctl restart ssh counts too, also on a step with confirm_access. The plan also warns when no later reload of sshd with confirm_access can roll the change back. Reload sshd in a service handler with confirm_access: true.",
                 "After the last step of a host that changed something, winch checks the access once more. When it fails, the host fails, and nothing rolls back."
@@ -2392,11 +2328,11 @@
             },
             {
               "type": "paragraph",
-              "text": "The commands of cmd, assert, unless, validate, then, health, and the certbot hooks run through sh -e, with stdin from /dev/null. A command of several lines stops at its first failed line."
+              "text": "The commands of cmd, unless, validate, then, health, and the certbot hooks run through sh -e, with stdin from /dev/null. A command of several lines stops at its first failed line."
             },
             {
               "type": "paragraph",
-              "text": "A cmd with dir runs in that directory. A cmd with user runs as that user, with the home of that user as HOME, and its name as USER and LOGNAME. It starts no login session: PAM does not run, so the login umask and limits of the user do not apply."
+              "text": "A cmd with dir runs in that directory, and so does its unless. A cmd with user runs as that user, and so does its unless, with the home of that user as HOME, and its name as USER and LOGNAME. It starts no login session: PAM does not run, so the login umask and limits of the user do not apply."
             },
             {
               "type": "heading",
@@ -2404,7 +2340,7 @@
             },
             {
               "type": "paragraph",
-              "text": "A command stops after 10 minutes, after the timeout of a cmd step in seconds, or after the --timeout of winch exec. The helper sends SIGTERM to the command and its child processes, and SIGKILL 10 seconds later to those that still run. The step fails, and the error shows the last 10 lines of output. apt-get in pkg, repo, and upgrade has no time limit."
+              "text": "A command stops after 10 minutes, after the timeout of a cmd step in seconds, or after the --timeout of winch exec. The helper sends SIGTERM to the command and its child processes, and SIGKILL 10 seconds later to those that still run. The step fails. The error of a failed command shows its output, up to the last 64 KiB. apt-get in pkg, repo, and upgrade has no time limit."
             },
             {
               "type": "paragraph",
@@ -2439,7 +2375,7 @@
                 ],
                 [
                   "checks/<project>",
-                  "pending health gates and asserts"
+                  "pending health gates"
                 ],
                 [
                   "certbot-hooks/<project>",
@@ -2473,7 +2409,7 @@
             },
             {
               "type": "paragraph",
-              "text": "To remove winch from a host, delete /var/lib/winch/. Pending handlers, then commands, health gates, asserts, and certbot hooks are then lost. The next run of winch starts from the state of the host."
+              "text": "To remove winch from a host, delete /var/lib/winch/. Pending handlers, then commands, health gates, and certbot hooks are then lost. The next run of winch starts from the state of the host."
             }
           ],
           "keys": [],
@@ -2483,34 +2419,6 @@
     }
   ],
   "modules": [
-    {
-      "name": "assert",
-      "line": "stop a host when a check command fails",
-      "body": "The plan marks the step with * and runs nothing. Apply runs the command. A failed assert stays pending on the host, and the next apply runs it again, also when nothing else changes.",
-      "keys": [
-        {
-          "name": "command",
-          "path": "assert.command",
-          "type": "string",
-          "default": "",
-          "required": true,
-          "line": "check command",
-          "text": "Check command. It runs during apply, through sh -e as root, in /. Exit 0 passes.",
-          "keys": []
-        },
-        {
-          "name": "message",
-          "path": "assert.message",
-          "type": "string",
-          "default": "",
-          "required": true,
-          "line": "error when the check fails",
-          "text": "Error when the check fails. The host fails with it when the command exits non-zero, followed by the shell's error when the exit is 126 or 127.",
-          "keys": []
-        }
-      ],
-      "example": "- name: Check that nginx answers\n  assert:\n    command: curl -fsS http://localhost/\n    message: nginx does not answer on port 80\n"
-    },
     {
       "name": "certbot",
       "line": "get a Let's Encrypt certificate",
@@ -2640,8 +2548,8 @@
           "type": "string",
           "default": "",
           "required": false,
-          "line": "check command; exit 0 skips the step",
-          "text": "Check command; exit 0 skips the step. It runs at the check as root, in /, with the timeout of the step. user and dir do not apply to it. A step has at most one of creates and unless.",
+          "line": "check command as user, in dir; exit 0 skips the step",
+          "text": "Check command; exit 0 skips the step. It runs at the check as user, with the user's home as HOME, in dir, with the timeout of the step. A dir that does not exist yet checks as change. When it fails and writes to stderr, the plan shows its last 3 lines. A step has at most one of creates and unless.",
           "keys": []
         },
         {
@@ -2650,8 +2558,8 @@
           "type": "string",
           "default": "root",
           "required": false,
-          "line": "account that runs command",
-          "text": "Account that runs command. Its home is HOME. The step starts no login session: PAM does not run, so the login umask and limits of the account do not apply, and the umask is 022.",
+          "line": "account that runs command and unless",
+          "text": "Account that runs command and unless. Its home is HOME. The step starts no login session: PAM does not run, so the login umask and limits of the account do not apply, and the umask is 022.",
           "keys": []
         },
         {
@@ -2660,8 +2568,8 @@
           "type": "string",
           "default": "/",
           "required": false,
-          "line": "working directory",
-          "text": "Working directory.",
+          "line": "working directory, also for unless",
+          "text": "Working directory, also for unless.",
           "keys": []
         },
         {
@@ -2672,6 +2580,16 @@
           "required": false,
           "line": "limit in seconds, also for unless",
           "text": "Limit in seconds, also for unless. After it, winch stops the command and the step fails.",
+          "keys": []
+        },
+        {
+          "name": "changes",
+          "path": "cmd.changes",
+          "type": "list of strings",
+          "default": "",
+          "required": false,
+          "line": "paths the command changes, for the access check",
+          "text": "Absolute paths that the command changes, such as [/etc/pam.d, /var/lib/pam] for pam-auth-update. One of them is a path that the access check covers: /etc/pam.d, /etc/sudoers, /etc/sudoers.d, or a path in them. The sudo rules count only when the login user is not root. The step then gets the rollback of confirm_access: the plan marks it, and apply keeps the old state of each listed path before the command, a file or a directory with its tree. After the command, also when it fails, winch runs the access check. When the check fails, winch puts the listed paths back. A path outside the covered paths only adds to what winch keeps. The paths have no glob characters.",
           "keys": []
         }
       ],
@@ -3032,7 +2950,7 @@
     {
       "name": "firewall",
       "line": "filter incoming traffic",
-      "body": "The step owns the nftables table inet winch and changes no other table. The rules of Docker, fail2ban, or /etc/nftables.conf stay. Its input chain filters traffic to the host. Traffic that Docker forwards to a container passes the forward hook, so a port that Docker publishes stays open. Publish the port on 127.0.0.1 when only a local proxy reaches the container. A host has at most one firewall step in a run.\n\nThe step needs nft: install the package nftables in an earlier pkg step.\n\nEvery change gets the access check and the rollback of confirm_access. When the access check fails after the new rules load, the old rules come back.\n\nThe check fails when a file of the step on the host, such as /etc/winch/firewall.nft, is larger than 1 MiB.",
+      "body": "The step owns the nftables table inet winch and changes no other table. The rules of Docker, fail2ban, or /etc/nftables.conf stay. Its input chain filters traffic to the host. The step does not filter forwarded or outgoing traffic. Traffic that Docker forwards to a container passes the forward hook, so a port that Docker publishes stays open. Publish the port on 127.0.0.1 when only a local proxy reaches the container. A host has at most one firewall step in a run.\n\nThe step needs nft: install the package nftables in an earlier pkg step.\n\nEvery change gets the access check and the rollback of confirm_access. When the access check fails after the new rules load, the old rules come back.\n\nThe check fails when a file of the step on the host, such as /etc/winch/firewall.nft, is larger than 1 MiB.",
       "keys": [
         {
           "name": "allow",
@@ -3041,7 +2959,7 @@
           "default": "",
           "required": false,
           "line": "accepted traffic to the host; the host drops the rest",
-          "text": "Accepted traffic to the host; the host drops the rest. It always accepts established and related traffic, loopback, ICMP echo requests, the ICMPv6 types that IPv6 needs, and DHCP replies. It drops invalid packets.",
+          "text": "Accepted traffic to the host; the host drops the rest. A rule has tcp, udp, or both, and optional from. Without from, a rule accepts every source. A rule with only from accepts every port and protocol from those sources. The table always accepts established and related traffic, loopback, ICMP echo requests, the ICMPv6 types that IPv6 needs, and DHCP replies. It drops invalid packets.",
           "keys": [
             {
               "name": "tcp",
@@ -3050,7 +2968,7 @@
               "default": "",
               "required": false,
               "line": "ports",
-              "text": "Ports. A rule has tcp or udp.",
+              "text": "Ports. A rule has tcp, udp, or both.",
               "keys": []
             },
             {
@@ -3060,7 +2978,7 @@
               "default": "",
               "required": false,
               "line": "ports",
-              "text": "Ports. A rule has tcp or udp.",
+              "text": "Ports. A rule has tcp, udp, or both.",
               "keys": []
             },
             {
@@ -3086,7 +3004,7 @@
           "keys": []
         }
       ],
-      "example": "- firewall:\n    allow:\n      - tcp: [22, 80, 443]\n      - udp: 51820\n      - tcp: 5432\n        from: [10.0.0.0/8, 2001:db8::/32]\n"
+      "example": "- firewall:\n    allow:\n      - tcp: [22, 80, 443]\n      - udp: 51820\n      - tcp: 5432\n        from: [10.0.0.0/8, 2001:db8::/32]\n      - tcp: 6443\n        udp: 8472\n        from: 10.0.0.5\n      - from: 10.42.0.0/16\n"
     },
     {
       "name": "group",
@@ -3366,9 +3284,9 @@
           "path": "repo.url",
           "type": "string",
           "default": "",
-          "required": true,
-          "line": "without a user or a password",
-          "text": "Without a user or a password.",
+          "required": false,
+          "line": "required without absent; no user or password",
+          "text": "Required without absent. Without a user or a password.",
           "keys": []
         },
         {
@@ -3376,9 +3294,9 @@
           "path": "repo.suite",
           "type": "string",
           "default": "",
-          "required": true,
-          "line": "such as trixie",
-          "text": "Such as trixie. A flat suite ends in /.",
+          "required": false,
+          "line": "required without absent; such as trixie",
+          "text": "Required without absent. Such as trixie. A flat suite ends in /.",
           "keys": []
         },
         {
@@ -3410,6 +3328,16 @@
           "line": "key text, in place of key",
           "text": "Key text, in place of key: an ASCII-armored OpenPGP public key. A step has at most one of key and key_content.",
           "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "repo.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "remove the source and its key",
+          "text": "Remove the source file and the key file. The check fails when the source file holds an entry that is not one deb entry, so the step never removes another source. The next pkg step that installs a package refreshes the index.",
+          "keys": []
         }
       ],
       "example": "- repo:\n    name: nginx\n    url: https://nginx.org/packages/debian\n    suite: trixie\n    components: [nginx]\n    key: key.asc\n"
@@ -3417,7 +3345,7 @@
     {
       "name": "service",
       "line": "control a systemd unit",
-      "body": "With running: false, a missing unit file is ok, with the note <unit> does not exist. A service step with confirm_access: true runs the access check after the step, and rolls back when it fails. Run winch doc step.confirm_access. In a handler, restarted and reloaded check as ok when a service step of the run started the unit after the handler's last notify, no earlier step of the handler changed anything, and the step has no confirm_access.\n\nA unit of type simple, exec, forking, or idle does not report readiness. After its start or restart, apply watches it for 2 seconds. A reload of such a unit without ExecReload is a restart, and gets the watch. The step fails when the unit is not running then, or when systemd restarted it in that time. A unit that crashes after the 2 seconds passes. A reload ends when ExecReload ends: one that only sends a signal is confirmed as sent, and the unit can still end after it. A health gate checks that a service works. Run winch doc pipeline.health.",
+      "body": "With running: false, a missing unit file is ok, with the note <unit> does not exist. A service step with confirm_access: true runs the access check after the step, and rolls back when it fails. Run winch doc step.confirm_access. In a handler, restarted and reloaded check as ok when a service step of the run started the unit after the handler's last notify, no earlier step of the handler changed anything, and the step has no confirm_access.\n\nA unit of type simple, exec, forking, or idle does not report readiness. After its start or restart, apply watches it for 2 seconds. A reload of such a unit without ExecReload is a restart, and gets the watch. The step fails when the unit is not running then, or when systemd restarted it in that time. A unit that crashes after the 2 seconds passes. A reload ends when ExecReload ends: one that only sends a signal is confirmed as sent, and the unit can still end after it. A health gate checks that a service works. Run winch doc pipeline.health.\n\nWhen systemd reports that a unit file changed on disk, or a drop-in in /etc/systemd/system/<unit>.d/ is not loaded, the step runs systemctl daemon-reload first. daemon-reload does not restart a running unit. A step with restarted: true does. A file step that writes a drop-in needs no daemon-reload in then when a service step of the unit comes after it.",
       "keys": [
         {
           "name": "name",
@@ -3524,6 +3452,16 @@
           "line": "unit file text",
           "text": "Unit file text. A step has source or content.",
           "keys": []
+        },
+        {
+          "name": "absent",
+          "path": "unit.absent",
+          "type": "boolean",
+          "default": "false",
+          "required": false,
+          "line": "stop the unit and remove it",
+          "text": "Stop the unit, remove its enable links and its file, and run systemctl daemon-reload. For a template unit, it also stops each running instance and removes their enable links. The check fails when another unit file of the same name exists, such as one from a package.",
+          "keys": []
         }
       ],
       "example": "- unit:\n    name: app.service\n    content: |\n      [Unit]\n      Description=App\n\n      [Service]\n      ExecStart=/usr/local/bin/app\n\n      [Install]\n      WantedBy=multi-user.target\n"
@@ -3549,7 +3487,7 @@
     {
       "name": "user",
       "line": "manage a user account",
-      "body": "A step that creates a user also creates its home directory. Without group, it also creates a group with the name of the user. The defaults and system count only when the step creates the user.",
+      "body": "A step that creates a user also creates its home directory, except /nonexistent. Without group, it also creates a group with the name of the user. A system user gets the home /nonexistent and the shell /usr/sbin/nologin. The defaults and system count only when the step creates the user.",
       "keys": [
         {
           "name": "name",
@@ -3598,7 +3536,7 @@
           "default": "/home/<name>",
           "required": false,
           "line": "created when missing; never moved",
-          "text": "Created when missing; never moved. The step creates a missing home directory, except /nonexistent. The default counts only when the step creates the user. A system user gets /nonexistent. A changed home is not moved.",
+          "text": "Created when missing; never moved. The step creates a missing home directory, except /nonexistent. A new home is owned by the user and its primary group, with mode 0700. The default counts only when the step creates the user. A system user gets /nonexistent. A changed home is not moved.",
           "keys": []
         },
         {
@@ -3658,7 +3596,7 @@
           "default": "",
           "required": false,
           "line": "exact SSH keys of the user",
-          "text": "Exact SSH keys of the user, in ~/.ssh/authorized_keys.",
+          "text": "Exact SSH keys of the user, in ~/.ssh/authorized_keys. sshd runs each command through the login shell, also the command= option of a key. A user that runs commands over SSH needs a login shell, such as /bin/sh.",
           "keys": []
         },
         {
@@ -3799,7 +3737,7 @@
         "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion. Each stage runs on the hosts in both its hosts and --hosts. The stages of --stages run in pipeline order.",
         "A --set value parses as YAML.",
         "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel.",
-        "With --exit-code, plan exits with code 2 when the plan has changes, unknown steps, pending handlers, a pending then, or a pending gate or assert."
+        "With --exit-code, plan exits with code 2 when the plan has changes, unknown steps, pending handlers, a pending then, or a pending gate."
       ],
       "examples": [
         {
@@ -3985,7 +3923,7 @@
         "Run plans one module step on the hosts of the pattern, asks, and applies it.",
         "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion.",
         "Each value parses as YAML: name=[htop,curl] is a list. Quote a value that YAML would change, such as mode='\"0644\"'. A value that YAML rejects, such as *x, @x, or [x, is an error that says to quote it.",
-        "The step runs in a stage named run. Unlike a pipeline step, it can use restarted and reloaded. Run rejects assert. Use winch exec for a check.",
+        "The step runs in a stage named run. Unlike a pipeline step, it can use restarted and reloaded.",
         "winch asks only when stdin and stderr are terminals. Without a terminal, and without --yes or --check, run prints the plan and exits with code 5. Its last line is the command that applies the plan with its hash.",
         "--check replaces the question. When the new plan has another hash, run exits with code 6 and changes nothing.",
         "With a terminal, ssh can ask questions, and winch connects to the hosts one at a time. Without one, or with --batch, ssh asks nothing, and winch connects to them in parallel. The apply question stays."
@@ -4061,9 +3999,9 @@
       "description": [
         "Exec runs a shell command on the hosts of the pattern, in parallel, and shows its output. It makes no plan and asks no question.",
         "A host pattern is a group or a host, with \",\" for union, \"&\" for intersection, and \"!\" for exclusion.",
-        "winch joins the words after -- with spaces and runs them through sh -c as root, in /, with stdin from /dev/null.",
+        "winch joins the words after -- with spaces and runs them through sh -c as root, in /, with stdin from /dev/null and with NO_COLOR=1.",
         "When the project has secrets, exec needs the age key. It decrypts the secrets, so that its output hides them.",
-        "Each host shows one block: the host name, then the output. Hosts with the same output and exit code share one block. A command that exits non-zero adds \"exit status N\" to its block. winch exits with code 1 when the command fails on a host.",
+        "Each host shows one block: the host name, then the output. Hosts with the same output and exit code share one block. A command that exits non-zero adds \"exit status N\" to its block. winch exits with code 1 when the command fails on a host. A control character in the output shows as \"?\".",
         "With --json, each host gives one exec event with output and exit_code.",
         "The command stops after 600 seconds, or after --timeout. Each host then sends SIGTERM to the command, and SIGKILL 10 seconds later.",
         "Ctrl-C stops the commands. Each host sends SIGINT to the command, and SIGKILL when it still runs after 10 seconds.",

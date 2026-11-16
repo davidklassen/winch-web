@@ -37,7 +37,7 @@ Add a `certbot` step before `Configure the site`:
     certbot:
       name: !expr vars.domain
       domains: !expr vars.domain
-      email: !tpl webmaster@{{ .vars.domain }}
+      email: !tpl webmaster@{{ vars.domain }}
       deploy_hook: systemctl reload nginx
 ```
 
@@ -54,18 +54,18 @@ Change `recipes/nginx/templates/site.tmpl`:
 server {
 	listen 80;
 	listen [::]:80;
-	server_name {{ .vars.domain }};
+	server_name {{ vars.domain }};
 	return 301 https://$host$request_uri;
 }
 
 server {
 	listen 443 ssl;
 	listen [::]:443 ssl;
-	server_name {{ .vars.domain }};
-	root /var/www/{{ .vars.domain }};
+	server_name {{ vars.domain }};
+	root /var/www/{{ vars.domain }};
 
-	ssl_certificate /etc/letsencrypt/live/{{ .vars.domain }}/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/{{ .vars.domain }}/privkey.pem;
+	ssl_certificate /etc/letsencrypt/live/{{ vars.domain }}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{{ vars.domain }}/privkey.pem;
 }
 ```
 

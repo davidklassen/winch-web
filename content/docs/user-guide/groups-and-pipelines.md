@@ -94,8 +94,8 @@ stages:
           path: /var/www/html/index.html
           content: !tpl |
             <!doctype html>
-            <title>{{ .vars.domain }}</title>
-            <p>Welcome to {{ .vars.domain }}.</p>
+            <title>{{ vars.domain }}</title>
+            <p>Welcome to {{ vars.domain }}.</p>
 
       - name: Run nginx
         service:

@@ -58,8 +58,8 @@ steps:
       path: /var/www/html/index.html
       content: !tpl |
         <!doctype html>
-        <title>{{ .vars.domain }}</title>
-        <p>Welcome to {{ .vars.domain }}.</p>
+        <title>{{ vars.domain }}</title>
+        <p>Welcome to {{ vars.domain }}.</p>
 
   - name: Run nginx
     service:
@@ -69,7 +69,7 @@ steps:
 ```
 
 `!tpl` marks the content as a template. winch fills in the values of
-each server: `{{ .vars.domain }}` becomes the domain of the server.
+each server: `{{ vars.domain }}` becomes the domain of the server.
 
 To check the project for mistakes, run `winch validate`. It connects
 to no server. With a typo in the template, you see:
