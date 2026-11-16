@@ -1010,7 +1010,7 @@
             },
             {
               "type": "paragraph",
-              "text": "The !tpl tag marks a template. It builds text, such as a path or a line. The template files of a recipe use the same language. {{ expression }} prints the value of an expression. Templates and expressions use one language, with the same data and functions; run winch doc expressions."
+              "text": "The !tpl tag marks a template. It builds text, such as a path or a line. The template files of a recipe use the same language. {{ expression }} prints the value of an expression. A string without !tpl is plain text: a {{ }} in it stays as it is. Templates and expressions use one language, with the same data and functions; run winch doc expressions."
             },
             {
               "type": "heading",
@@ -1825,7 +1825,7 @@
             },
             {
               "type": "paragraph",
-              "text": "winch secret generate and winch secret encrypt need the recipients, but no age key. generate never prints the password."
+              "text": "winch secret generate and winch secret encrypt need the recipients, but no age key. generate makes a password of 32 letters and digits, and never prints the password."
             },
             {
               "type": "paragraph",
@@ -1973,7 +1973,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Apply prints a line for each step that changes or fails, then the summary. A step that checks as ok prints nothing: a planned change that the second check finds made, and a handler restart that checks as ok. An access check that passes prints access check passed after the step or handler that started it. The access check at the end of a host prints access check after the run passed. A health gate that passes prints health passed and its command. The summary line of plan and of apply counts hosts, not steps."
+              "text": "Apply prints a line for each step that changes or fails, then the summary. A step that checks as ok prints nothing: a planned change that the second check finds made, and a handler restart that checks as ok. An access check that passes prints access check passed after the step or handler that started it. The access check at the end of a host prints access check after the run passed. A health gate that passes prints health passed and its command. The summary line of plan and of apply counts hosts, not steps. An unreachable host counts as failed. A host that changed and then failed counts only as failed."
             },
             {
               "type": "heading",
@@ -2291,7 +2291,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Every command on the host, also one that a module runs, such as apt-get or systemctl, runs as root in /, with only this environment:"
+              "text": "Every command on the host, also one that a module runs, such as apt-get or systemctl, runs as root in /, with only this environment, except a cmd with user or dir:"
             },
             {
               "type": "table",
@@ -2406,6 +2406,10 @@
                   "the session lock"
                 ]
               ]
+            },
+            {
+              "type": "paragraph",
+              "text": "Each session updates the modification time of the helper and writes lock. A file-integrity tool such as AIDE reports both."
             },
             {
               "type": "paragraph",
@@ -2529,7 +2533,7 @@
           "default": "",
           "required": true,
           "line": "shell script",
-          "text": "Shell script. It runs through sh -e as root, in /, with stdin from /dev/null. A script of several lines stops at its first failed line. Without creates or unless, the check result is unknown.",
+          "text": "Shell script. It runs through sh -e as user, in dir, with stdin from /dev/null. A script of several lines stops at its first failed line. Without creates or unless, the check result is unknown.",
           "keys": []
         },
         {
@@ -2921,7 +2925,7 @@
           "default": "",
           "required": false,
           "line": "check command for the new file",
-          "text": "Check command for the new file. The command names the real path, or checks the whole config: nginx -t. winch puts the new file in place and runs the command. When the command fails, the old file comes back and the step fails.",
+          "text": "Check command for the new file. The command names the real path, or checks the whole config: nginx -t. It has no placeholder such as %s. winch puts the new file in place and runs the command. When the command fails, the old file comes back and the step fails.",
           "keys": []
         },
         {
@@ -3075,7 +3079,7 @@
     {
       "name": "line",
       "line": "manage one line in a file",
-      "body": "",
+      "body": "When one line matches match, the step replaces it with line. When none matches, the step adds line at the end of the file. Without absent, more than one matching line fails the check. With absent, the step removes every matching line.",
       "keys": [
         {
           "name": "path",
@@ -3104,7 +3108,7 @@
           "default": "",
           "required": true,
           "line": "regular expression for the line",
-          "text": "Regular expression for the line. More than one matching line fails the check.",
+          "text": "Regular expression for the line. Without absent, more than one matching line fails the check.",
           "keys": []
         },
         {
@@ -3374,7 +3378,7 @@
           "default": "",
           "required": false,
           "line": "start at boot; unset leaves it",
-          "text": "Start at boot; unset leaves it. Without enabled, the step does not change it.",
+          "text": "Start at boot; unset leaves it. Without enabled, the step does not change it. A unit that systemd makes from an init script fails the check: its rc links decide the start at boot.",
           "keys": []
         },
         {
